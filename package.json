@@ -8,14 +8,10 @@
     "start:backend": "cd backend && npm start",
     "start:frontend": "cd frontend && npm run dev",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "build:frontend": "cd frontend && npm run build",
-    "dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\""
+    "build:frontend": "cd frontend && npm run build"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
-  "devDependencies": {
-    "concurrently": "^9.2.0"
-  }
+  "type": "commonjs"
 }
