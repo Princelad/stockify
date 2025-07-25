@@ -12,13 +12,34 @@
 - 🐛 **Bug Reports:** Found a bug? [Create an issue](https://github.com/Princelad/stockify/issues/new?template=bug_report.md)
 - ✨ **Feature Requests:** Have an idea? [Suggest a feature](https://github.com/Princelad/stockify/issues/new?template=feature_request.md)
 
-**A modern, open-source inventory and billing management system designed for small and medium businesses**
+**An open-source stock management and billing solution for small and medium-sized businesses**
 
-*Streamline your business operations with powerful analytics, automated workflows, and growth-oriented tools*
+*Streamline your business operations with essential inventory tracking, billing, and customer management features*
 
-[🚀 Quick Start](#-quick-start) • [✨ Features](#️-features) • [🛣️ Roadmap](#️-roadmap) • [🤝 Contributing](#-contributing)
+[🚀 Quick Start](#-quick-start) • [🎯 Project Scope](#-project-scope) • [✨ Features](#️-features) • [🛣️ Roadmap](#️-roadmap) • [🤝 Contributing](#-contributing)
 
 </div>
+
+---
+
+## 🎯 Project Scope
+
+Stockify is designed as a **minimal but comprehensive** open-source solution for stock management and billing, specifically tailored for small and medium-sized businesses. While the system includes multiple feature types, it focuses on essential functionality rather than being a fully-fledged enterprise system.
+
+### Core Purpose
+Help shopkeepers and business owners efficiently manage their inventory and streamline billing processes by:
+- **Stock Management:** Track product details and monitor goods coming in and out of shops
+- **Integrated Billing:** Generate customer bills that automatically update stock levels
+- **Business Insights:** Display trends and growth patterns to support business decisions
+- **Customer Relations:** Manage customer purchase history and payment tracking
+
+### Key Capabilities
+- **Multi-tier Pricing:** Support both retail customers and wholesale dealers with different pricing structures
+- **Payment Flexibility:** Accept multiple payment methods (UPI, Cash, Card, etc.)
+- **Credit Management:** Track customer payment histories and set purchase permissions based on payment behavior
+- **Catalog Management:** Bulk import product catalogs and easily update stock during deliveries
+- **Order Management:** Reduce manual bookkeeping with digital order tracking
+- **Multi-supplier Support:** Track same products from different suppliers while maintaining unified inventory
 
 ---
 
@@ -83,40 +104,39 @@ docker-compose up -d
 - **Secure Authentication:** JWT-based authentication with bcrypt password hashing
 - **User Activity Tracking:** Monitor user actions and login history
 
-### 📦 Inventory Management
+### 📦 Stock Management
 - **Product Catalog:** Comprehensive product management with categories and variants
-- **QR Code Integration:** Generate and scan QR codes for quick product identification
-- **Expiry Date Tracking:** Monitor product expiration dates with automated alerts
-- **GST/HSN Support:** Tax compliance with GST and HSN code management
-- **Stock Levels:** Real-time inventory tracking with low-stock notifications
-- **Batch Management:** Track product batches and manufacturing dates
+- **Multi-supplier Tracking:** Same products from different suppliers with unified inventory view
+- **Stock Levels:** Real-time inventory tracking with automatic updates during sales
+- **Bulk Import:** Import complete product catalogs from suppliers
+- **Goods Tracking:** Monitor products coming in and going out of the shop
+- **Delivery Integration:** Easy stock updates during goods delivery
 
 ### 💰 Billing & Sales
-- **Fast Checkout:** Streamlined billing process with barcode scanning
-- **Tax Calculations:** Automatic tax computation with multiple tax rates
-- **Discounts & Offers:** Flexible discount system (percentage, fixed amount, buy-one-get-one)
-- **Multiple Payment Methods:** Cash, card, UPI, and digital wallet support
-- **Invoice Generation:** Professional PDF invoices with print functionality
-- **Return Management:** Handle returns and refunds efficiently
+- **Integrated Billing:** Automatic stock deduction when generating customer bills
+- **Multi-tier Pricing:** Different prices for retail customers and wholesale dealers
+- **Multiple Payment Methods:** Support for UPI, Cash, Card, and other payment options
+- **Invoice Generation:** Professional bill generation with business details
+- **Customer Purchase History:** Track all customer transactions and payment records
 
-### 📊 Analytics & Reporting
-- **Sales Analytics:** Comprehensive sales reports with time-based filtering
-- **Inventory Reports:** Stock movement, valuation, and turnover analysis
-- **Profit/Loss Tracking:** Real-time P&L statements and margin analysis
-- **Customer Insights:** Purchase history and behavior analytics
-- **Dashboard Widgets:** Customizable dashboard with key metrics
+### 📊 Business Analytics
+- **Growth Trends:** Visual representation of business growth and performance
+- **Sales Reports:** Track sales patterns and identify popular products
+- **Stock Movement:** Monitor inventory turnover and movement patterns
+- **Customer Insights:** Analyze customer behavior and purchase patterns
 
-### 👤 Customer Management
+### 👤 Customer & Dealer Management
 - **Customer Profiles:** Detailed customer information and purchase history
-- **Loyalty Programs:** Points-based reward system to encourage repeat business
-- **Communication:** Email and SMS invoice delivery (optional integration)
-- **Credit Management:** Track customer credit limits and outstanding amounts
+- **Payment History:** Track customer payments and outstanding amounts
+- **Credit Control:** Set purchase permissions based on payment behavior
+- **Loyalty Discounts:** Reward frequent customers with automatic discounts
+- **Dealer Support:** Separate pricing and management for wholesale dealers
 
-### 🔧 Business Tools
-- **Data Import/Export:** CSV and Excel support for bulk operations
-- **Backup & Restore:** Automated database backups with restore functionality
-- **Multi-location Support:** Manage multiple store locations from single dashboard
-- **Offline Mode:** Continue operations during internet connectivity issues
+### 🔧 Business Operations
+- **Order Management:** Digital order tracking to reduce manual bookkeeping
+- **Supplier Management:** Track multiple suppliers for the same products
+- **Payment Tracking:** Monitor customer payment histories and creditworthiness
+- **Stock Alerts:** Notifications for low stock and reorder requirements
 
 
 ---
@@ -248,17 +268,49 @@ docker-compose up -d
 3. **Documentation:**
    - Continue updating the README and subfolder READMEs as features are added.
 
-### 🚧 Planned Roadmap (To Be Updated As You Build)
+### �️ Development Roadmap
 
-- [ ] Backend API and authentication (Express, MongoDB)
-- [ ] Frontend UI and dashboard (React, Tailwind CSS)
-- [ ] Inventory and billing modules
-- [ ] Analytics and reporting
-- [ ] User management
-- [ ] Testing and CI/CD setup
-- [ ] Docker and deployment scripts
+#### Phase 1: Core Foundation (Current)
+- [x] Project initialization with Express backend and React frontend
+- [x] Basic project structure and documentation
+- [ ] Database schema design for products, customers, and sales
+- [ ] User authentication and authorization system
+- [ ] Basic product management (CRUD operations)
 
-*Expand this roadmap as your project evolves!*
+#### Phase 2: Stock Management
+- [ ] Product catalog with multi-supplier support
+- [ ] Stock tracking and inventory updates
+- [ ] Bulk product import functionality
+- [ ] Goods in/out tracking system
+- [ ] Stock level monitoring and alerts
+
+#### Phase 3: Billing System
+- [ ] Integrated billing with automatic stock deduction
+- [ ] Multi-tier pricing (retail vs wholesale)
+- [ ] Multiple payment method support
+- [ ] Invoice generation and printing
+- [ ] Sales transaction recording
+
+#### Phase 4: Customer Management
+- [ ] Customer profile management
+- [ ] Payment history tracking
+- [ ] Credit control and purchase permissions
+- [ ] Loyalty discount system
+- [ ] Dealer management with separate pricing
+
+#### Phase 5: Business Analytics
+- [ ] Sales trend analysis and reporting
+- [ ] Growth tracking and visualization
+- [ ] Customer behavior analytics
+- [ ] Stock movement reports
+- [ ] Business performance dashboard
+
+#### Phase 6: Advanced Features
+- [ ] Order management system
+- [ ] Multi-supplier product tracking
+- [ ] Advanced reporting and insights
+- [ ] Mobile-responsive interface improvements
+- [ ] Export/import functionality for data migration
 
 ---
 
@@ -284,9 +336,18 @@ docker-compose up -d
 ### For Business Owners
 1. **Setup:** Follow the [Quick Start](#-quick-start) guide
 2. **Configuration:** Set up your business details, tax rates, and user accounts
-3. **Inventory:** Import your existing product catalog or add products manually
-4. **Training:** Use the built-in demo data to familiarize yourself with features
-5. **Go Live:** Start processing real transactions and track your business growth
+3. **Catalog:** Import your product catalog or add products manually with supplier details
+4. **Customers:** Set up customer profiles and dealer accounts with appropriate pricing
+5. **Operations:** Start processing sales with integrated stock management and billing
+6. **Analytics:** Monitor business growth trends and customer patterns
+
+### For Shopkeepers
+1. **Product Management:** Easily add products from multiple suppliers to your catalog
+2. **Stock Tracking:** Monitor goods coming in during deliveries and going out during sales
+3. **Billing:** Generate bills that automatically update your stock levels
+4. **Customer Relations:** Track customer payment histories and manage credit limits
+5. **Order Management:** Reduce manual bookkeeping with digital order tracking
+6. **Business Insights:** View trends and growth to make informed business decisions
 
 ### For Developers
 1. **Fork** the repository and clone your fork
