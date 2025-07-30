@@ -32,7 +32,9 @@ const Login = () => {
     return (
         <div className="login-container">
             <form className="login-form" onSubmit={handleSubmit}>
-                <h2>Login</h2>
+                
+                <h1>Stockify</h1>
+                <h4>A Stock Management and Billing Solution</h4>
                 {error && <div className="error">{error}</div>}
                 <input
                     type="email"
