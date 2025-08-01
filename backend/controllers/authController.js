@@ -2,7 +2,7 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const user = require('../models/Users')
 
-exports.registerUser = async (req, res) => {
+const registerUser = async (req, res) => {
     try {
         const { name, email, password } = req.body
         const exisstingUser = await user.findOne({ email })
@@ -41,3 +41,4 @@ exports.registerUser = async (req, res) => {
         res.status(500).json({ message: 'Server Error' })
     }
 }
+module.exports = registerUser 
