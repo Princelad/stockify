@@ -13,9 +13,9 @@ const Navbar: React.FC = () => {
     <div className="fixed top-6 left-1/2 transform -translate-x-1/2 z-50">
       {/* Floating Island Navbar */}
       <nav className="bg-white/90 backdrop-blur-lg border border-blue-200/30 rounded-2xl shadow-lg px-6 w-[90vw] h-9.5">
-        <div className="flex items-center justify-between space-x-8">
+        <div className="grid grid-cols-3 items-center h-full">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 justify-start">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-600 to-blue-700">
               <svg
                 className="h-5 w-5 text-white"
@@ -31,7 +31,7 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Navigation Menu */}
-          <div className="flex-1 flex justify-center">
+          <div className="flex justify-center">
             <NavigationMenu className="hidden md:flex">
               <NavigationMenuList className="flex items-center space-x-1">
                 <NavigationMenuItem>
@@ -65,7 +65,7 @@ const Navbar: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center space-x-2 ml-auto">
+          <div className="flex items-center space-x-2 justify-end">
             <Button
               asChild
               size="sm"
