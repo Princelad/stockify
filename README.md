@@ -3,7 +3,7 @@
 
 <div align="center">
 
-![GitHub repo](https://img.shields.io/github/stars/Princelad/stockify?style=social)
+![GitHub repo](https://img.shields.io/github/stars/Princelad/stockify?style=social&label=Star)
 ![MIT License](https://img.shields.io/badge/license-MIT-green)
 ![GitHub issues](https://img.shields.io/github/issues/Princelad/stockify)
 ![GitHub forks](https://img.shields.io/github/forks/Princelad/stockify)

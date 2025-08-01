@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 
-export function LoginForm({
+export function SignupForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
@@ -29,19 +29,31 @@ export function LoginForm({
               <span className="sr-only">Stockify</span>
             </a>
             <h1 className="text-xl font-bold text-blue-900">
-              Welcome to Stockify
+              Create your account
             </h1>
             <div className="text-center text-sm">
-              Don&apos;t have an account?{" "}
+              Already have an account?{" "}
               <Link
-                to="/signup"
+                to="/login"
                 className="underline underline-offset-4 text-blue-700 hover:text-blue-900"
               >
-                Sign up
+                Sign in
               </Link>
             </div>
           </div>
           <div className="flex flex-col gap-6">
+            <div className="grid gap-3">
+              <Label htmlFor="fullName" className="text-blue-900">
+                Full Name
+              </Label>
+              <Input
+                id="fullName"
+                type="text"
+                placeholder="John Doe"
+                required
+                className="border-blue-200 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
             <div className="grid gap-3">
               <Label htmlFor="email" className="text-blue-900">
                 Email
@@ -61,7 +73,19 @@ export function LoginForm({
               <Input
                 id="password"
                 type="password"
-                placeholder="Enter your password"
+                placeholder="Create a password"
+                required
+                className="border-blue-200 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div className="grid gap-3">
+              <Label htmlFor="confirmPassword" className="text-blue-900">
+                Confirm Password
+              </Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm your password"
                 required
                 className="border-blue-200 focus:border-blue-500 focus:ring-blue-500"
               />
@@ -70,7 +94,7 @@ export function LoginForm({
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Login
+              Create Account
             </Button>
           </div>
           <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
