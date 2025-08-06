@@ -1,5 +1,3 @@
-// middleware/validation.js
-
 const Joi = require('joi');
 
 const registerSchema = Joi.object({
@@ -17,5 +15,20 @@ const validateRegister = (req, res, next) => {
     }
     next();
 };
+const loginSchema = Joi.object({
+    email: Joi.string().email().required(),
+    password: Joi.string().required(),
+});
 
-module.exports = validateRegister;
+const validateLogin = (req, res, next) => {
+    const { error } = loginSchema.validate(req.body);
+    if (error) {
+        return res.status(400).json({
+            success: false,
+            message: error.details[0].message
+        });
+    }
+    next();
+}
+
+module.exports = { validateRegister, validateLogin };

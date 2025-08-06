@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { apiService, saveAuthData } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function SignupForm({
   className,
@@ -21,6 +23,7 @@ export function SignupForm({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.id]: e.target.value });
@@ -61,29 +64,35 @@ export function SignupForm({
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
-      });
+      const response = await apiService.register({ name, email, password });
 
-      const data = await res.json();
-      
-      if (!res.ok) {
-        setError(data.message || data.msg || "Registration failed");
-        setLoading(false);
-        return;
+      if (response.success) {
+        // Auto-login after successful registration if token is provided
+        if (response.token && response.user) {
+          saveAuthData(response.token, response.user);
+          login(response.user);
+          navigate("/dashboard");
+        } else {
+          // If no auto-login, navigate to login page
+          navigate("/login", { 
+            state: { message: "Registration successful! Please log in." } 
+          });
+        }
+      } else {
+        setError(response.message || "Registration failed");
       }
-
-      // Success - navigate to login
-      navigate("/login", { 
-        state: { message: "Registration successful! Please log in." } 
-      });
-    } catch (err) {
-      console.error("Registration error:", err);
-      setError("Network error. Please try again.");
+    } catch (error) {
+      console.error("Registration error:", error);
+      setError(error instanceof Error ? error.message : "Registration failed. Please try again.");
+    } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    // Redirect to backend Google OAuth endpoint
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    window.location.href = `${backendUrl}/auth/google`;
   };
 
   return (
@@ -288,6 +297,7 @@ export function SignupForm({
             <Button
               variant="outline"
               type="button"
+              onClick={handleGoogleLogin}
               className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-900"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

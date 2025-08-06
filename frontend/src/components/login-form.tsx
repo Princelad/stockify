@@ -2,17 +2,82 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { apiService, saveAuthData } from "@/lib/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
   const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+    // Clear error when user starts typing
+    if (error) setError("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    const { email, password } = formData;
+
+    // Basic validation
+    if (!email.trim()) {
+      setError("Email is required");
+      setLoading(false);
+      return;
+    }
+
+    if (!password.trim()) {
+      setError("Password is required");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await apiService.login({ email, password });
+
+      if (response.success && response.token && response.user) {
+        // Save auth data
+        saveAuthData(response.token, response.user);
+        
+        // Update auth context
+        login(response.user);
+        
+        // Navigate to dashboard
+        navigate('/dashboard');
+      } else {
+        setError(response.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(error instanceof Error ? error.message : 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleGoogleLogin = () => {
+    // Redirect to backend Google OAuth endpoint
+    const backendUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    window.location.href = `${backendUrl}/auth/google`;
+  };
+
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <form>
+      <form onSubmit={handleSubmit}>
         <div className="flex flex-col gap-6">
           <div className="flex flex-col items-center gap-2">
             <a
@@ -43,6 +108,13 @@ export function LoginForm({
               </Link>
             </div>
           </div>
+          
+          {error && (
+            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+              {error}
+            </div>
+          )}
+
           <div className="flex flex-col gap-6">
             <div className="grid gap-3">
               <Label htmlFor="email" className="text-blue-900">
@@ -52,8 +124,11 @@ export function LoginForm({
                 id="email"
                 type="email"
                 placeholder="m@example.com"
+                value={formData.email}
+                onChange={handleChange}
                 required
                 className="border-blue-200 focus:border-blue-500 focus:ring-blue-500"
+                disabled={loading}
               />
             </div>
             <div className="grid gap-3">
@@ -65,8 +140,11 @@ export function LoginForm({
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
+                  value={formData.password}
+                  onChange={handleChange}
                   required
                   className="border-blue-200 focus:border-blue-500 focus:ring-blue-500 pr-10"
+                  disabled={loading}
                 />
                 <button
                   type="button"
@@ -115,8 +193,9 @@ export function LoginForm({
             <Button
               type="submit"
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={loading}
             >
-              Login
+              {loading ? "Signing in..." : "Login"}
             </Button>
           </div>
           <div className="after:border-border relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t">
@@ -128,6 +207,7 @@ export function LoginForm({
             <Button
               variant="outline"
               type="button"
+              onClick={handleGoogleLogin}
               className="w-full border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-900"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">

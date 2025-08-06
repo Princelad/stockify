@@ -3,7 +3,8 @@ const userSchema = new mongoose.Schema(
     {
         name: {
             type: String,
-            required: true
+            required: true,
+            trim: true
         },
         email: {
             type: String,
@@ -14,7 +15,18 @@ const userSchema = new mongoose.Schema(
         },
         password: {
             type: String,
-            required: true
+            required: function () {
+                return !this.googleId
+            }
+        },
+        googleId: {
+            type: String,
+            sparse: true // it allows multiple null values
+        },
+        avtar:
+        {
+            type: String,
+            default: null
         },
         role: {
             type: String,
@@ -24,6 +36,10 @@ const userSchema = new mongoose.Schema(
         isActive: {
             type: Boolean,
             dafault: true
+        },
+        lastlogin: {
+            type: Date,
+            default: null
         },
     },
     { timestamps: true }
