@@ -1,6 +1,16 @@
 // API configuration and service functions
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+import type { 
+  Product, 
+  DashboardStats, 
+  ProductFilters, 
+  CreateProductRequest, 
+  StockUpdateRequest,
+  Category,
+  Supplier
+} from '@/types/product';
+
 // API response types
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -8,6 +18,12 @@ export interface ApiResponse<T = any> {
   data?: T;
   user?: User;
   token?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
 }
 
 export interface User {
@@ -98,6 +114,77 @@ class ApiService {
 
   async verifyToken(): Promise<ApiResponse> {
     return this.request('/auth/verify', {
+      method: 'GET',
+    });
+  }
+
+  // Product-related methods
+  async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
+    return this.request('/products/dashboard-stats', {
+      method: 'GET',
+    });
+  }
+
+  async getProducts(filters?: ProductFilters): Promise<ApiResponse<Product[]>> {
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const queryString = queryParams.toString();
+    const endpoint = queryString ? `/products?${queryString}` : '/products';
+    
+    return this.request(endpoint, {
+      method: 'GET',
+    });
+  }
+
+  async getProduct(id: string): Promise<ApiResponse<Product>> {
+    return this.request(`/products/${id}`, {
+      method: 'GET',
+    });
+  }
+
+  async createProduct(product: CreateProductRequest): Promise<ApiResponse<Product>> {
+    return this.request('/products', {
+      method: 'POST',
+      body: JSON.stringify(product),
+    });
+  }
+
+  async updateProduct(id: string, product: Partial<CreateProductRequest>): Promise<ApiResponse<Product>> {
+    return this.request(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(product),
+    });
+  }
+
+  async deleteProduct(id: string): Promise<ApiResponse> {
+    return this.request(`/products/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async updateStock(stockUpdate: StockUpdateRequest): Promise<ApiResponse> {
+    return this.request('/products/update-stock', {
+      method: 'POST',
+      body: JSON.stringify(stockUpdate),
+    });
+  }
+
+  async getCategories(): Promise<ApiResponse<Category[]>> {
+    return this.request('/products/categories', {
+      method: 'GET',
+    });
+  }
+
+  async getSuppliers(): Promise<ApiResponse<Supplier[]>> {
+    return this.request('/products/suppliers', {
       method: 'GET',
     });
   }

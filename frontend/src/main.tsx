@@ -6,6 +6,7 @@ import Landing from "./pages/Landing.tsx";
 import Login from "./pages/Login.tsx";
 import Signup from "./pages/Signup.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Products from "./pages/Products.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Aboutus from "./pages/Aboutus.tsx";
 import Contactus from "./pages/Contactus.tsx";
@@ -36,6 +37,14 @@ const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Dashboard />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: "/products",
+    element: (
+      <ProtectedRoute>
+        <Products />
       </ProtectedRoute>
     ),
   },
