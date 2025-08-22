@@ -61,7 +61,8 @@ const productSchema = new mongoose.Schema({
   supplier: {
     name: String,
     contact: String,
-    email: String
+    email: String,
+    address: String
   },
   // Product Details
   barcode: {

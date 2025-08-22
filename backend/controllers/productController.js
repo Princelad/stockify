@@ -881,6 +881,7 @@ const getSuppliers = async (req, res) => {
                     _id: '$supplier.name',
                     contact: { $first: '$supplier.contact' },
                     email: { $first: '$supplier.email' },
+                    address: { $first: '$supplier.address' },
                     productCount: { $sum: 1 },
                     totalStockValue: { $sum: { $multiply: ['$currentStock', '$costPrice'] } }
                 }
@@ -888,9 +889,20 @@ const getSuppliers = async (req, res) => {
             { $sort: { productCount: -1 } }
         ]);
 
+        // Map the suppliers to match the expected frontend format
+        const mappedSuppliers = suppliers.map(supplier => ({
+            _id: supplier._id, // Using supplier name as _id since we group by name
+            name: supplier._id,
+            contact: supplier.contact || '',
+            email: supplier.email || '',
+            address: supplier.address || '',
+            productCount: supplier.productCount,
+            totalValue: supplier.totalStockValue
+        }));
+
         res.json({
             success: true,
-            data: suppliers
+            data: mappedSuppliers
         });
     } catch (error) {
         console.error('Get suppliers error:', error);

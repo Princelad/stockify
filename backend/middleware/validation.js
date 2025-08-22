@@ -47,7 +47,8 @@ const productSchema = Joi.object({
     supplier: Joi.object({
         name: Joi.string().optional().allow(''),
         contact: Joi.string().optional().allow(''),
-        email: Joi.string().email().optional().allow('')
+        email: Joi.string().email().optional().allow(''),
+        address: Joi.string().optional().allow('')
     }).optional(),
     barcode: Joi.string().optional().allow('').trim(),
     weight: Joi.number().optional().min(0),

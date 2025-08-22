@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import AddProductModal from "@/components/modals/AddProductModalSimple";
 import { apiService } from "@/lib/api";
 import type { DashboardStats } from "@/types/product";
 import { 
@@ -14,7 +15,6 @@ import {
   ShoppingCart,
   DollarSign,
   BarChart3,
-  Plus,
   ArrowUpRight,
   ArrowDownRight,
   Eye
@@ -44,6 +44,27 @@ export default function Dashboard() {
 
     fetchDashboardStats();
   }, []);
+
+  const handleProductAdded = (_product: any) => {
+    // Refresh dashboard stats after adding a new product
+    fetchDashboardStats();
+  };
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getDashboardStats();
+      if (response.success) {
+        setStats(response.data!);
+      } else {
+        setError(response.message);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -256,10 +277,7 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="mt-8 flex flex-wrap gap-4">
-        <Button className="bg-blue-600 hover:bg-blue-700">
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Product
-        </Button>
+        <AddProductModal onProductAdded={handleProductAdded} />
         <Button variant="outline">
           <TrendingUp className="h-4 w-4 mr-2" />
           View Analytics
