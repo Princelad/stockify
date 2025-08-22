@@ -6,8 +6,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+import { ToastContainer } from '@/components/ui/toast';
 import { apiService } from '@/lib/api';
+import { useToast } from '@/hooks/useToast';
 import type { CreateProductRequest, Category, Supplier } from '@/types/product';
 import { 
   Package, 
@@ -16,8 +17,6 @@ import {
   Hash, 
   BarChart3, 
   AlertTriangle,
-  Plus,
-  X,
   Save,
   RefreshCw
 } from 'lucide-react';
@@ -28,6 +27,8 @@ interface AddProductFormProps {
 }
 
 export default function AddProductForm({ onSuccess, onCancel }: AddProductFormProps) {
+  const { toast, toasts, removeToast } = useToast();
+  
   const [formData, setFormData] = useState<CreateProductRequest>({
     name: '',
     description: '',
@@ -60,8 +61,6 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  const [tagInput, setTagInput] = useState('');
   const [profitMargin, setProfitMargin] = useState(0);
 
   useEffect(() => {
@@ -164,7 +163,6 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
     e.preventDefault();
     setLoading(true);
     setError(null);
-    setSuccess(null);
 
     try {
       // Validation
@@ -186,7 +184,14 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
       const response = await apiService.createProduct(productData as any);
       
       if (response.success) {
-        setSuccess('Product created successfully!');
+        // Show success toast
+        toast({
+          type: 'success',
+          title: 'Product Created Successfully!',
+          description: `${formData.name} has been added to your inventory.`,
+          duration: 5000
+        });
+
         if (onSuccess) {
           onSuccess(response.data);
         }
@@ -222,7 +227,16 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
         throw new Error(response.message || 'Failed to create product');
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to create product');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create product';
+      setError(errorMessage);
+      
+      // Show error toast
+      toast({
+        type: 'error',
+        title: 'Failed to Create Product',
+        description: errorMessage,
+        duration: 5000
+      });
     } finally {
       setLoading(false);
     }
@@ -242,12 +256,6 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
             <Alert variant="destructive" className="mb-4">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert className="mb-4 border-green-200 bg-green-50">
-              <AlertDescription className="text-green-800">{success}</AlertDescription>
             </Alert>
           )}
 
@@ -559,6 +567,9 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
           </form>
         </CardContent>
       </Card>
+      
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
