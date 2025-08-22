@@ -14,6 +14,7 @@ import AuthCallback from "./pages/AuthCallback.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 
+
 const router = createBrowserRouter([
   {
     path: "/",
