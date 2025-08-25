@@ -5,7 +5,7 @@ REM Get the directory where this batch file is located
 set "PROJECT_DIR=%~dp0"
 
 echo Starting Backend Server...
-start "Backend Server" cmd /k "cd /d "%PROJECT_DIR%backend" && npm run dev"
+start "Backend Server" cmd /k "cd /d "%PROJECT_DIR%backend" && npm start"
 
 timeout /t 3 /nobreak > nul
 
