@@ -9,7 +9,7 @@ $ProjectDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # Start Backend Server
 Write-Host "Starting Backend Server..." -ForegroundColor Yellow
 $BackendPath = Join-Path $ProjectDir "backend"
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$BackendPath'; npm run dev"
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$BackendPath'; npm start"
 
 # Wait a moment for backend to start
 Start-Sleep -Seconds 3

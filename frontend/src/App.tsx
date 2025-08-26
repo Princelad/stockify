@@ -6,6 +6,7 @@ import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
 import Dashboard from '@/pages/Dashboard';
 import Products from '@/pages/Products';
+import DialogTest from '@/pages/DialogTest';
 import NotFound from '@/pages/NotFound';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/test-dialog" element={<DialogTest />} />
             
             {/* Protected routes */}
             <Route 

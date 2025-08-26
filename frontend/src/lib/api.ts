@@ -32,6 +32,21 @@ export interface User {
   email: string;
   role: string;
   avatar?: string;
+  lastLogin?: string;
+  createdAt?: string;
+  isActive?: boolean;
+}
+
+export interface UpdateUserRequest {
+  name?: string;
+  email?: string;
+  avatar?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 export interface LoginRequest {
@@ -115,6 +130,38 @@ class ApiService {
   async verifyToken(): Promise<ApiResponse> {
     return this.request('/auth/verify', {
       method: 'GET',
+    });
+  }
+
+  // User profile methods
+  async getUserProfile(): Promise<ApiResponse<User>> {
+    return this.request('/users/profile', {
+      method: 'GET',
+    });
+  }
+
+  async updateUserProfile(userData: UpdateUserRequest): Promise<ApiResponse<User>> {
+    return this.request('/users/profile', {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  }
+
+  async changePassword(passwordData: ChangePasswordRequest): Promise<ApiResponse> {
+    return this.request('/users/change-password', {
+      method: 'POST',
+      body: JSON.stringify(passwordData),
+    });
+  }
+
+  async uploadAvatar(file: File): Promise<ApiResponse<{ avatar: string }>> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    return this.request('/users/upload-avatar', {
+      method: 'POST',
+      body: formData,
+      headers: {}, // Remove Content-Type header to let browser set it with boundary
     });
   }
 

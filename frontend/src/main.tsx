@@ -7,6 +7,8 @@ import Login from "./pages/Login.tsx";
 import Signup from "./pages/Signup.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Products from "./pages/Products.tsx";
+import Profile from "./pages/Profile.tsx";
+// import Settings from "./pages/Settings.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import Aboutus from "./pages/Aboutus.tsx";
 import Contactus from "./pages/Contactus.tsx";
@@ -49,6 +51,22 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+  {
+    path: "/profile",
+    element: (
+      <ProtectedRoute>
+        <Profile />
+      </ProtectedRoute>
+    ),
+  },
+  // {
+  //   path: "/settings",
+  //   element: (
+  //     <ProtectedRoute>
+  //       <Settings />
+  //     </ProtectedRoute>
+  //   ),
+  // },
   {
     path: "/about",
     element: <Aboutus />,

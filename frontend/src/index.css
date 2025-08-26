@@ -118,3 +118,10 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Dialog styles to ensure proper rendering */
+@layer components {
+  .dialog-overlay {
+    background: rgba(0, 0, 0, 0.8);
+  }
+}

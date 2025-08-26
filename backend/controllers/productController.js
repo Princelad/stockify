@@ -8,20 +8,23 @@ const mongoose = require('mongoose');
  */
 const getDashboardStats = async (req, res) => {
     try {
+        // Filter by current user's products only
+        const userFilter = { isActive: true, createdBy: req.user._id };
+        
         // Basic product counts
-        const totalProducts = await Product.countDocuments({ isActive: true });
+        const totalProducts = await Product.countDocuments(userFilter);
         const lowStockProducts = await Product.countDocuments({
-            isActive: true,
+            ...userFilter,
             $expr: { $lte: ['$currentStock', '$minStockLevel'] }
         });
         const outOfStockProducts = await Product.countDocuments({
-            isActive: true,
+            ...userFilter,
             currentStock: 0
         });
 
         // Multi-tier pricing analysis
         const pricingAnalysis = await Product.aggregate([
-            { $match: { isActive: true } },
+            { $match: userFilter },
             {
                 $group: {
                     _id: null,
@@ -50,7 +53,7 @@ const getDashboardStats = async (req, res) => {
 
         // Supplier analytics
         const supplierStats = await Product.aggregate([
-            { $match: { isActive: true, 'supplier.name': { $exists: true, $ne: '' } } },
+            { $match: { ...userFilter, 'supplier.name': { $exists: true, $ne: '' } } },
             {
                 $group: {
                     _id: '$supplier.name',
@@ -70,7 +73,7 @@ const getDashboardStats = async (req, res) => {
 
         // Category distribution with stock levels
         const categoryStats = await Product.aggregate([
-            { $match: { isActive: true } },
+            { $match: userFilter },
             {
                 $group: {
                     _id: '$category',
@@ -88,7 +91,7 @@ const getDashboardStats = async (req, res) => {
         ]);
 
         // Recent stock movements (products added/updated recently)
-        const recentActivity = await Product.find({ isActive: true })
+        const recentActivity = await Product.find(userFilter)
             .sort({ updatedAt: -1 })
             .limit(10)
             .select('name sku currentStock updatedAt category supplier.name')
@@ -96,7 +99,7 @@ const getDashboardStats = async (req, res) => {
 
         // Top selling products (by totalSold)
         const topSellingProducts = await Product.find({ 
-            isActive: true,
+            ...userFilter,
             totalSold: { $gt: 0 }
         })
         .sort({ totalSold: -1 })
@@ -105,7 +108,7 @@ const getDashboardStats = async (req, res) => {
 
         // Critical alerts
         const criticalAlerts = await Product.find({
-            isActive: true,
+            ...userFilter,
             currentStock: 0
         }).select('name sku category supplier.name');
 
@@ -159,8 +162,11 @@ const getProducts = async (req, res) => {
             sortOrder = 'desc'
         } = req.query;
 
-        // Build dynamic filter
-        const filter = { isActive: true };
+        // Build dynamic filter with user filtering
+        const filter = { 
+            isActive: true, 
+            createdBy: req.user._id  // Filter by current user
+        };
 
         // Multi-field search
         if (search) {
@@ -252,7 +258,8 @@ const getProductsBySupplier = async (req, res) => {
         
         const products = await Product.find({
             'supplier.name': { $regex: supplierName, $options: 'i' },
-            isActive: true
+            isActive: true,
+            createdBy: req.user._id  // Filter by current user
         }).sort({ name: 1 });
 
         // Group same products from different suppliers
@@ -402,11 +409,14 @@ const trackStockMovement = async (req, res) => {
             customerInfo 
         } = req.body;
 
-        const product = await Product.findById(productId);
+        const product = await Product.findOne({
+            _id: productId,
+            createdBy: req.user._id  // Ensure user can only track their own products
+        });
         if (!product) {
             return res.status(404).json({
                 success: false,
-                message: 'Product not found'
+                message: 'Product not found or you do not have permission to access it'
             });
         }
 
@@ -478,11 +488,14 @@ const getProductPricing = async (req, res) => {
         const { productId } = req.params;
         const { customerType = 'retail', quantity = 1 } = req.query;
 
-        const product = await Product.findById(productId);
+        const product = await Product.findOne({
+            _id: productId,
+            createdBy: req.user._id  // Ensure user can only access their own products
+        });
         if (!product) {
             return res.status(404).json({
                 success: false,
-                message: 'Product not found'
+                message: 'Product not found or you do not have permission to access it'
             });
         }
 
@@ -563,10 +576,13 @@ const processSale = async (req, res) => {
             let totalSaleValue = 0;
 
             for (let saleItem of products) {
-                const product = await Product.findById(saleItem.productId).session(session);
+                const product = await Product.findOne({
+                    _id: saleItem.productId,
+                    createdBy: req.user._id  // Ensure user can only process sales for their own products
+                }).session(session);
                 
                 if (!product) {
-                    throw new Error(`Product not found: ${saleItem.productId}`);
+                    throw new Error(`Product not found or access denied: ${saleItem.productId}`);
                 }
 
                 if (product.currentStock < saleItem.quantity) {
@@ -631,8 +647,10 @@ const processSale = async (req, res) => {
  */
 const getProduct = async (req, res) => {
     try {
-        const product = await Product.findById(req.params.id)
-            .populate('createdBy', 'name email');
+        const product = await Product.findOne({
+            _id: req.params.id,
+            createdBy: req.user._id  // Ensure user can only access their own products
+        }).populate('createdBy', 'name email');
 
         if (!product) {
             return res.status(404).json({
@@ -708,8 +726,11 @@ const createProduct = async (req, res) => {
  */
 const updateProduct = async (req, res) => {
     try {
-        const product = await Product.findByIdAndUpdate(
-            req.params.id,
+        const product = await Product.findOneAndUpdate(
+            { 
+                _id: req.params.id,
+                createdBy: req.user._id  // Ensure user can only update their own products
+            },
             req.body,
             { new: true, runValidators: true }
         ).populate('createdBy', 'name email');
@@ -717,7 +738,7 @@ const updateProduct = async (req, res) => {
         if (!product) {
             return res.status(404).json({
                 success: false,
-                message: 'Product not found'
+                message: 'Product not found or you do not have permission to update it'
             });
         }
 
@@ -749,8 +770,11 @@ const updateProduct = async (req, res) => {
  */
 const deleteProduct = async (req, res) => {
     try {
-        const product = await Product.findByIdAndUpdate(
-            req.params.id,
+        const product = await Product.findOneAndUpdate(
+            { 
+                _id: req.params.id,
+                createdBy: req.user._id  // Ensure user can only delete their own products
+            },
             { isActive: false },
             { new: true }
         );
@@ -758,7 +782,7 @@ const deleteProduct = async (req, res) => {
         if (!product) {
             return res.status(404).json({
                 success: false,
-                message: 'Product not found'
+                message: 'Product not found or you do not have permission to delete it'
             });
         }
 
@@ -790,11 +814,14 @@ const updateStock = async (req, res) => {
             });
         }
 
-        const product = await Product.findById(productId);
+        const product = await Product.findOne({
+            _id: productId,
+            createdBy: req.user._id  // Ensure user can only update stock for their own products
+        });
         if (!product) {
             return res.status(404).json({
                 success: false,
-                message: 'Product not found'
+                message: 'Product not found or you do not have permission to update it'
             });
         }
 
@@ -845,9 +872,11 @@ const updateStock = async (req, res) => {
  */
 const getCategories = async (req, res) => {
     try {
-        const categories = await Product.distinct('category', { isActive: true });
+        const userFilter = { isActive: true, createdBy: req.user._id };
+        
+        const categories = await Product.distinct('category', userFilter);
         const categoriesWithCount = await Product.aggregate([
-            { $match: { isActive: true } },
+            { $match: userFilter },
             { $group: { _id: '$category', count: { $sum: 1 } } },
             { $sort: { count: -1 } }
         ]);
@@ -874,8 +903,10 @@ const getCategories = async (req, res) => {
  */
 const getSuppliers = async (req, res) => {
     try {
+        const userFilter = { isActive: true, createdBy: req.user._id };
+        
         const suppliers = await Product.aggregate([
-            { $match: { isActive: true, 'supplier.name': { $exists: true, $ne: '' } } },
+            { $match: { ...userFilter, 'supplier.name': { $exists: true, $ne: '' } } },
             {
                 $group: {
                     _id: '$supplier.name',

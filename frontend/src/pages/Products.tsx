@@ -4,12 +4,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
 import { apiService } from "@/lib/api";
+import FixedAddProduct from "@/components/FixedAddProduct";
 import type { Product, ProductFilters, Category, Supplier } from "@/types/product";
 import { 
   Package, 
@@ -90,9 +90,17 @@ export default function Products() {
   };
 
   const getStockStatus = (product: Product) => {
-    if (product.stock === 0) return { status: 'Out of Stock', variant: 'danger' as const };
-    if (product.stock <= product.minStockLevel) return { status: 'Low Stock', variant: 'warning' as const };
+    if (product.currentStock === 0) return { status: 'Out of Stock', variant: 'danger' as const };
+    if (product.currentStock <= product.minStockLevel) return { status: 'Low Stock', variant: 'warning' as const };
     return { status: 'In Stock', variant: 'success' as const };
+  };
+
+  const getSupplierName = (supplier: Product['supplier']) => {
+    return typeof supplier === 'string' ? supplier : supplier.name;
+  };
+
+  const getSupplierContact = (supplier: Product['supplier']) => {
+    return typeof supplier === 'string' ? '' : supplier.contact || '';
   };
 
   if (loading) {
@@ -272,11 +280,11 @@ export default function Products() {
                             <TableCell>
                               <div className="flex items-center space-x-2">
                                 <span className={`font-medium ${
-                                  product.stock === 0 ? 'text-red-600' : 
-                                  product.stock <= product.minStockLevel ? 'text-yellow-600' : 
+                                  product.currentStock === 0 ? 'text-red-600' : 
+                                  product.currentStock <= product.minStockLevel ? 'text-yellow-600' : 
                                   'text-green-600'
                                 }`}>
-                                  {product.stock}
+                                  {product.currentStock}
                                 </span>
                                 <span className="text-sm text-gray-500">/ {product.minStockLevel} min</span>
                               </div>
@@ -293,9 +301,9 @@ export default function Products() {
                             </TableCell>
                             <TableCell>
                               <div className="text-sm">
-                                <div className="font-medium">{product.supplier.name}</div>
-                                {product.supplier.contact && (
-                                  <div className="text-gray-500">{product.supplier.contact}</div>
+                                <div className="font-medium">{getSupplierName(product.supplier)}</div>
+                                {getSupplierContact(product.supplier) && (
+                                  <div className="text-gray-500">{getSupplierContact(product.supplier)}</div>
                                 )}
                               </div>
                             </TableCell>
@@ -371,11 +379,15 @@ export default function Products() {
 
       {/* Add Product Modal */}
       <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Add New Product</DialogTitle>
-          </DialogHeader>
-          <ProductForm onClose={() => setShowAddProduct(false)} />
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <FixedAddProduct
+            onSuccess={() => {
+              setShowAddProduct(false);
+              // Refresh the products list
+              window.location.reload();
+            }}
+            onCancel={() => setShowAddProduct(false)}
+          />
         </DialogContent>
       </Dialog>
 
@@ -390,195 +402,6 @@ export default function Products() {
   );
 }
 
-// Product Form Component
-function ProductForm({ onClose }: { onClose: () => void }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    category: '',
-    brand: '',
-    sku: '',
-    costPrice: 0,
-    sellingPrice: 0,
-    stock: 0,
-    minStockLevel: 5,
-    supplier: {
-      name: '',
-      contact: '',
-      email: '',
-      phone: ''
-    }
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await apiService.createProduct(formData);
-      onClose();
-      // Refresh products list
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to create product:', error);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <Label htmlFor="name">Product Name *</Label>
-          <Input
-            id="name"
-            required
-            value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="category">Category *</Label>
-          <Input
-            id="category"
-            required
-            value={formData.category}
-            onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="brand">Brand</Label>
-          <Input
-            id="brand"
-            value={formData.brand}
-            onChange={(e) => setFormData(prev => ({ ...prev, brand: e.target.value }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="sku">SKU *</Label>
-          <Input
-            id="sku"
-            required
-            value={formData.sku}
-            onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="costPrice">Cost Price</Label>
-          <Input
-            id="costPrice"
-            type="number"
-            min="0"
-            step="0.01"
-            value={formData.costPrice}
-            onChange={(e) => setFormData(prev => ({ ...prev, costPrice: parseFloat(e.target.value) || 0 }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="sellingPrice">Selling Price *</Label>
-          <Input
-            id="sellingPrice"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            value={formData.sellingPrice}
-            onChange={(e) => setFormData(prev => ({ ...prev, sellingPrice: parseFloat(e.target.value) || 0 }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="stock">Stock Quantity *</Label>
-          <Input
-            id="stock"
-            type="number"
-            min="0"
-            required
-            value={formData.stock}
-            onChange={(e) => setFormData(prev => ({ ...prev, stock: parseInt(e.target.value) || 0 }))}
-          />
-        </div>
-        <div>
-          <Label htmlFor="minStockLevel">Minimum Stock Level</Label>
-          <Input
-            id="minStockLevel"
-            type="number"
-            min="0"
-            value={formData.minStockLevel}
-            onChange={(e) => setFormData(prev => ({ ...prev, minStockLevel: parseInt(e.target.value) || 0 }))}
-          />
-        </div>
-      </div>
-
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Input
-          id="description"
-          value={formData.description}
-          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-        />
-      </div>
-
-      <div className="border-t pt-4">
-        <h3 className="font-medium mb-3">Supplier Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="supplierName">Supplier Name *</Label>
-            <Input
-              id="supplierName"
-              required
-              value={formData.supplier.name}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                supplier: { ...prev.supplier, name: e.target.value } 
-              }))}
-            />
-          </div>
-          <div>
-            <Label htmlFor="supplierContact">Contact Person</Label>
-            <Input
-              id="supplierContact"
-              value={formData.supplier.contact}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                supplier: { ...prev.supplier, contact: e.target.value } 
-              }))}
-            />
-          </div>
-          <div>
-            <Label htmlFor="supplierEmail">Email</Label>
-            <Input
-              id="supplierEmail"
-              type="email"
-              value={formData.supplier.email}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                supplier: { ...prev.supplier, email: e.target.value } 
-              }))}
-            />
-          </div>
-          <div>
-            <Label htmlFor="supplierPhone">Phone</Label>
-            <Input
-              id="supplierPhone"
-              value={formData.supplier.phone}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                supplier: { ...prev.supplier, phone: e.target.value } 
-              }))}
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end space-x-2 pt-4">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
-        <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-          Create Product
-        </Button>
-      </div>
-    </form>
-  );
-}
-
 // Product Details Modal
 function ProductDetailsModal({ product, onClose }: { product: Product; onClose: () => void }) {
   const formatCurrency = (amount: number) => {
@@ -589,12 +412,20 @@ function ProductDetailsModal({ product, onClose }: { product: Product; onClose: 
   };
 
   const getStockStatus = (product: Product) => {
-    if (product.stock === 0) return { status: 'Out of Stock', variant: 'danger' as const };
-    if (product.stock <= product.minStockLevel) return { status: 'Low Stock', variant: 'warning' as const };
+    if (product.currentStock === 0) return { status: 'Out of Stock', variant: 'danger' as const };
+    if (product.currentStock <= product.minStockLevel) return { status: 'Low Stock', variant: 'warning' as const };
     return { status: 'In Stock', variant: 'success' as const };
   };
 
   const stockStatus = getStockStatus(product);
+
+  const getSupplierName = (supplier: Product['supplier']) => {
+    return typeof supplier === 'string' ? supplier : supplier.name;
+  };
+
+  const getSupplierField = (supplier: Product['supplier'], field: 'contact' | 'email' | 'phone') => {
+    return typeof supplier === 'string' ? '' : (supplier[field] || '');
+  };
 
   return (
     <Dialog open={true} onOpenChange={() => onClose()}>
@@ -671,11 +502,11 @@ function ProductDetailsModal({ product, onClose }: { product: Product; onClose: 
               <div>
                 <label className="text-sm font-medium text-gray-500">Current Stock</label>
                 <p className={`text-2xl font-bold ${
-                  product.stock === 0 ? 'text-red-600' : 
-                  product.stock <= product.minStockLevel ? 'text-yellow-600' : 
+                  product.currentStock === 0 ? 'text-red-600' : 
+                  product.currentStock <= product.minStockLevel ? 'text-yellow-600' : 
                   'text-green-600'
                 }`}>
-                  {product.stock}
+                  {product.currentStock}
                 </p>
               </div>
               <div>
@@ -697,24 +528,24 @@ function ProductDetailsModal({ product, onClose }: { product: Product; onClose: 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Name</label>
-                <p className="font-medium">{product.supplier.name}</p>
+                <p className="font-medium">{getSupplierName(product.supplier)}</p>
               </div>
-              {product.supplier.contact && (
+              {getSupplierField(product.supplier, 'contact') && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Contact Person</label>
-                  <p>{product.supplier.contact}</p>
+                  <p>{getSupplierField(product.supplier, 'contact')}</p>
                 </div>
               )}
-              {product.supplier.email && (
+              {getSupplierField(product.supplier, 'email') && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Email</label>
-                  <p>{product.supplier.email}</p>
+                  <p>{getSupplierField(product.supplier, 'email')}</p>
                 </div>
               )}
-              {product.supplier.phone && (
+              {getSupplierField(product.supplier, 'phone') && (
                 <div>
                   <label className="text-sm font-medium text-gray-500">Phone</label>
-                  <p>{product.supplier.phone}</p>
+                  <p>{getSupplierField(product.supplier, 'phone')}</p>
                 </div>
               )}
             </div>

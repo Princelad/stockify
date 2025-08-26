@@ -8,6 +8,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (user: User) => void;
   logout: () => void;
+  refreshUser: () => void;
   isAuthenticated: boolean;
 }
 
@@ -56,11 +57,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     window.location.href = '/login';
   };
 
+  const refreshUser = () => {
+    try {
+      if (isAuthenticated()) {
+        const userData = getCurrentUser();
+        if (userData) {
+          setUser(userData);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
     login,
     logout,
+    refreshUser,
     isAuthenticated: !!user,
   };
 
