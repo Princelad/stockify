@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,9 +63,49 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
   const [error, setError] = useState<string | null>(null);
   const [profitMargin, setProfitMargin] = useState(0);
 
+  // Add states for suggestions
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [brandSuggestions, setBrandSuggestions] = useState<string[]>([]);
+  const [skuSuggestions, setSkuSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState<{
+    name: boolean;
+    brand: boolean;
+    sku: boolean;
+  }>({
+    name: false,
+    brand: false,
+    sku: false
+  });
+  
+  // Refs for clicking outside detection
+  const nameInputRef = useRef<HTMLDivElement>(null);
+  const brandInputRef = useRef<HTMLDivElement>(null);
+  const skuInputRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Handle clicking outside of suggestion dropdowns
+    function handleClickOutside(event: MouseEvent) {
+      if (nameInputRef.current && !nameInputRef.current.contains(event.target as Node)) {
+        setShowSuggestions(prev => ({ ...prev, name: false }));
+      }
+      if (brandInputRef.current && !brandInputRef.current.contains(event.target as Node)) {
+        setShowSuggestions(prev => ({ ...prev, brand: false }));
+      }
+      if (skuInputRef.current && !skuInputRef.current.contains(event.target as Node)) {
+        setShowSuggestions(prev => ({ ...prev, sku: false }));
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     fetchCategories();
     fetchSuppliers();
+    fetchProductSuggestions();
   }, []);
 
   useEffect(() => {
@@ -101,6 +141,30 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
     }
   };
 
+  // Add console log to debug API response
+  const fetchProductSuggestions = async () => {
+    try {
+      const response = await apiService.getProducts({ limit: 20 });
+      console.log('Product suggestions response:', response);
+      if (response.success && response.data) {
+        const products = response.data;
+        
+        // Extract unique product names and brands for suggestions
+        const names = Array.from(new Set(products.map((p: any) => p.name)));
+        const brands = Array.from(new Set(products.map((p: any) => p.brand).filter(Boolean)));
+        const skus = Array.from(new Set(products.map((p: any) => p.sku)));
+        
+        setNameSuggestions(names);
+        setBrandSuggestions(brands);
+        setSkuSuggestions(skus);
+        
+        console.log('Loaded suggestions:', { names, brands, skus });
+      }
+    } catch (error) {
+      console.error('Error fetching product suggestions:', error);
+    }
+  };
+
   const handleInputChange = (field: string, value: any) => {
     if (field.includes('.')) {
       const [parent, child] = field.split('.');
@@ -116,6 +180,15 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
         ...prev,
         [field]: value
       }));
+    }
+
+    // Show relevant suggestions based on input
+    if (field === 'name') {
+      setShowSuggestions(prev => ({ ...prev, name: true }));
+    } else if (field === 'brand') {
+      setShowSuggestions(prev => ({ ...prev, brand: true }));
+    } else if (field === 'sku') {
+      setShowSuggestions(prev => ({ ...prev, sku: true }));
     }
   };
 
@@ -142,22 +215,18 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
     handleInputChange('sku', sku);
   };
 
-//   const addTag = () => {
-//     if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
-//       setFormData(prev => ({
-//         ...prev,
-//         tags: [...(prev.tags || []), tagInput.trim()]
-//       }));
-//       setTagInput('');
-//     }
-//   };
+  const handleSuggestionSelect = (field: string, value: string) => {
+    handleInputChange(field, value);
+    setShowSuggestions(prev => ({ ...prev, [field]: false }));
+  };
 
-//   const removeTag = (tagToRemove: string) => {
-//     setFormData(prev => ({
-//       ...prev,
-//       tags: prev.tags?.filter(tag => tag !== tagToRemove) || []
-//     }));
-//   };
+  const filterSuggestions = (suggestions: string[], input: string) => {
+    if (!input) return suggestions;
+    const lowerInput = input.toLowerCase();
+    return suggestions.filter(item => 
+      item.toLowerCase().includes(lowerInput)
+    ).slice(0, 5); // Limit to 5 suggestions
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,7 +331,7 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
+              <div ref={nameInputRef} className="relative">
                 <Label htmlFor="name" className="flex items-center">
                   <Package className="h-4 w-4 mr-1" />
                   Product Name *
@@ -272,8 +341,26 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                   value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
                   placeholder="Enter product name"
+                  onFocus={() => setShowSuggestions(prev => ({ ...prev, name: true }))}
                   required
                 />
+                {showSuggestions.name && (
+                  <div className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-auto">
+                    {nameSuggestions.length > 0 ? (
+                      filterSuggestions(nameSuggestions, formData.name || '').map((suggestion, index) => (
+                                              <div 
+                                                key={index}
+                                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                                onClick={() => handleSuggestionSelect('name', suggestion)}
+                                              >
+                                                {suggestion}
+                                              </div>
+                                            ))
+                    ) : (
+                      <div className="px-4 py-2 text-gray-500">No suggestions found</div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -295,29 +382,67 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                 </Select>
               </div>
 
-              <div>
+              <div ref={brandInputRef} className="relative">
                 <Label htmlFor="brand">Brand</Label>
                 <Input
                   id="brand"
                   value={formData.brand}
                   onChange={(e) => handleInputChange('brand', e.target.value)}
                   placeholder="Enter brand name"
+                  onFocus={() => setShowSuggestions(prev => ({ ...prev, brand: true }))}
                 />
+                {showSuggestions.brand && (
+                  <div className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-auto">
+                    {brandSuggestions.length > 0 ? (
+                      filterSuggestions(brandSuggestions, formData.brand || '').map((suggestion, index) => (
+                        <div 
+                          key={index}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleSuggestionSelect('brand', suggestion)}
+                        >
+                          {suggestion}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-4 py-2 text-gray-500">No suggestions found</div>
+                    )}
+                  </div>
+                )}
               </div>
 
-              <div>
+              <div ref={skuInputRef} className="relative">
                 <Label htmlFor="sku" className="flex items-center">
                   <Hash className="h-4 w-4 mr-1" />
                   SKU *
                 </Label>
                 <div className="flex gap-2">
-                  <Input
-                    id="sku"
-                    value={formData.sku}
-                    onChange={(e) => handleInputChange('sku', e.target.value)}
-                    placeholder="Enter SKU"
-                    required
-                  />
+                  <div className="relative flex-1">
+                    <Input
+                      id="sku"
+                      value={formData.sku}
+                      onChange={(e) => handleInputChange('sku', e.target.value)}
+                      placeholder="Enter SKU"
+                      onFocus={() => setShowSuggestions(prev => ({ ...prev, sku: true }))}
+                      required
+                    />
+                    {showSuggestions.sku && (
+                      <div className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-auto">
+                        {skuSuggestions.length > 0 ? (
+                          filterSuggestions(skuSuggestions, formData.sku || '').map((suggestion, index) => (
+                                                      <div 
+                                                        key={index}
+                                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                                        onClick={() => handleSuggestionSelect('sku', suggestion)}
+                                                      >
+                                                        {suggestion}
+                                                      </div>
+                                                    ))
+                        ) : (
+                          <div className="px-4 py-2 text-gray-500">No suggestions found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <Button type="button" onClick={generateSKU} variant="outline" size="sm">
                     <RefreshCw className="h-4 w-4" />
                   </Button>
