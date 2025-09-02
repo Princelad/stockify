@@ -1,32 +1,248 @@
-# Node modules
-node_modules/
+# ===================================
+# STOCKIFY PROJECT GITIGNORE
+# ===================================
 
-# Logs
+# ===================================
+# Node.js
+# ===================================
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.npm
+.eslintcache
+.node_repl_history
+.yarn-integrity
+yarn.lock
+package-lock.json
+
+# ===================================
+# Environment & Configuration Files
+# ===================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging
+.env.production
+backend/.env
+frontend/.env
+config.local.js
+secrets.json
+
+# ===================================
+# Build Outputs & Dist
+# ===================================
+dist/
+build/
+out/
+frontend/dist/
+frontend/build/
+backend/dist/
+backend/build/
+*.tsbuildinfo
+.cache/
+.parcel-cache/
+.nuxt
+.vuepress/dist
+.serverless
+
+# ===================================
+# Logs & Runtime Data
+# ===================================
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+pids
+*.pid
+*.seed
+*.pid.lock
+lib-cov
+coverage/
+.nyc_output
+.grunt
+bower_components
 
-# Dependency directories
-backend/node_modules/
-frontend/node_modules/
+# ===================================
+# Testing
+# ===================================
+coverage/
+.coverage
+*.cover
+.hypothesis/
+.pytest_cache/
+.jest
+test-results/
+junit.xml
+.mocha-results.json
 
-# Build output
-frontend/dist/
+# ===================================
+# Database & Storage
+# ===================================
+*.sqlite
+*.sqlite3
+*.db
+data/
+uploads/
+temp/
+tmp/
+.mongodb/
+.redis/
 
-# Environment files
-.env
-.env.*
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Misc
-*.local
-*.sublime-workspace
-*.sublime-project
-
-# VSCode
+# ===================================
+# IDE & Editor Files  
+# ===================================
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-workspace
+.sublime-project
+*.code-workspace
+.history/
+.ionide/
+
+# ===================================
+# OS Generated Files
+# ===================================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ===================================
+# Development Tools
+# ===================================
+.storybook/
+storybook-static/
+.docusaurus
+.docz
+
+# ===================================
+# Bundler & Build Tools
+# ===================================
+.webpack/
+.rollup.cache/
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# ===================================
+# TypeScript
+# ===================================
+*.tsbuildinfo
+.tsbuildinfo
+
+# ===================================
+# Vite (Frontend Build Tool)
+# ===================================
+.vite/
+vite.config.ts.timestamp-*
+vite.config.js.timestamp-*
+
+# ===================================
+# React & Frontend Specific
+# ===================================
+.next/
+.svelte-kit/
+.nuxt/
+.vercel/
+.netlify/
+
+# ===================================
+# Security & Certificates
+# ===================================
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+.ssh/
+certificates/
+
+# ===================================
+# Backup & Archive Files
+# ===================================
+*.bak
+*.backup
+*.old
+*.orig
+*.tmp
+*.temp
+*.tar.gz
+*.zip
+*.rar
+*.7z
+
+# ===================================
+# Documentation Build
+# ===================================
+docs/_build/
+docs/.doctrees/
+site/
+
+# ===================================
+# GitHub Copilot Instructions
+# ===================================
+copilot-instructions.md
+.github/copilot-instructions.md
+**/*copilot-instructions.md
+
+# ===================================
+# Monitoring & Analytics
+# ===================================
+.sentry/
+.newrelic/
+
+# ===================================
+# Container & Deployment
+# ===================================
+.docker/
+docker-compose.override.yml
+.env.docker
+Dockerfile.dev
+.dockerignore.dev
+
+# ===================================
+# Local Development
+# ===================================
+.local/
+.cache/
+.temp/
+.tmp/
+local/
+scratch/
+playground/
+
+# ===================================
+# Package Managers
+# ===================================
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# ===================================
+# Miscellaneous
+# ===================================
+*.local
+.husky/_/
+.changeset/
+.turbo/
+.rush/

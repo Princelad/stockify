@@ -70,3 +70,6 @@ yarn.lock
 
 # VS Code settings
 .vscode/
+
+# GitHub Copilot Instructions
+*copilot-instructions.md

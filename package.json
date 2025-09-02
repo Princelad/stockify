@@ -1,17 +1,50 @@
 {
   "name": "stockify",
   "version": "1.0.0",
-  "description": "Stockify is a full-stack application for stock tracking and analysis, featuring a Node.js backend and a modern frontend built with Vite and React.",
+  "description": "A comprehensive open-source stock management and billing solution for small and medium-sized businesses. Built with React, Node.js, and MongoDB, featuring inventory tracking, customer management, sales analytics, and automated billing with multi-tier pricing support.",
   "main": "index.js",
+  "keywords": [
+    "stock-management",
+    "inventory-tracking",
+    "billing-system", 
+    "pos-system",
+    "business-management",
+    "small-business",
+    "retail-management",
+    "wholesale-billing",
+    "customer-management",
+    "sales-analytics",
+    "barcode-generator",
+    "invoice-generation",
+    "react",
+    "nodejs",
+    "mongodb",
+    "typescript",
+    "open-source"
+  ],
+  "author": "Stockify Development Team <team@stockify.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Princelad/stockify.git"
+  },
+  "homepage": "https://github.com/Princelad/stockify#readme",
+  "bugs": {
+    "url": "https://github.com/Princelad/stockify/issues"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start:backend": "cd backend && npm start",
     "start:frontend": "cd frontend && npm run dev",
+    "start:dev": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "build:frontend": "cd frontend && npm run build"
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:frontend",
+    "clean": "rm -rf node_modules backend/node_modules frontend/node_modules",
+    "reset": "npm run clean && npm run install:all"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
 }
