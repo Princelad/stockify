@@ -1,4 +1,3 @@
-
 # 📦 Stockify
 
 <div align="center">
@@ -14,7 +13,7 @@
 
 **An open-source stock management and billing solution for small and medium-sized businesses**
 
-*Streamline your business operations with essential inventory tracking, billing, and customer management features*
+_Streamline your business operations with essential inventory tracking, billing, and customer management features_
 
 [🚀 Quick Start](#-quick-start) • [🎯 Project Scope](#-project-scope) • [✨ Features](#️-features) • [🛣️ Roadmap](#️-roadmap) • [🤝 Contributing](#-contributing)
 
@@ -27,13 +26,16 @@
 Stockify is designed as a **minimal but comprehensive** open-source solution for stock management and billing, specifically tailored for small and medium-sized businesses. While the system includes multiple feature types, it focuses on essential functionality rather than being a fully-fledged enterprise system.
 
 ### Core Purpose
+
 Help shopkeepers and business owners efficiently manage their inventory and streamline billing processes by:
+
 - **Stock Management:** Track product details and monitor goods coming in and out of shops
 - **Integrated Billing:** Generate customer bills that automatically update stock levels
 - **Business Insights:** Display trends and growth patterns to support business decisions
 - **Customer Relations:** Manage customer purchase history and payment tracking
 
 ### Key Capabilities
+
 - **Multi-tier Pricing:** Support both retail customers and wholesale dealers with different pricing structures
 - **Payment Flexibility:** Accept multiple payment methods (UPI, Cash, Card, etc.)
 - **Credit Management:** Track customer payment histories and set purchase permissions based on payment behavior
@@ -43,10 +45,10 @@ Help shopkeepers and business owners efficiently manage their inventory and stre
 
 ---
 
-
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 16+ and npm
 - MongoDB 4.4+
 - Git
@@ -79,6 +81,7 @@ cd frontend && npm start
 ```
 
 ### Docker Setup (Alternative)
+
 ```bash
 # Using Docker Compose
 docker-compose up -d
@@ -89,22 +92,24 @@ docker-compose up -d
 ```
 
 ### Default Admin Credentials
-- **Email:** admin@stockify.com  
+
+- **Email:** admin@stockify.com
 - **Password:** admin123
 
 > ⚠️ **Important:** Change the default admin credentials after first login!
 
 ---
 
-
 ## ✨ Features
 
 ### 👥 User Management
+
 - **Role-based Access Control:** Admin and Staff roles with granular permissions
 - **Secure Authentication:** JWT-based authentication with bcrypt password hashing
 - **User Activity Tracking:** Monitor user actions and login history
 
 ### 📦 Stock Management
+
 - **Product Catalog:** Comprehensive product management with categories and variants
 - **Multi-supplier Tracking:** Same products from different suppliers with unified inventory view
 - **Stock Levels:** Real-time inventory tracking with automatic updates during sales
@@ -113,6 +118,7 @@ docker-compose up -d
 - **Delivery Integration:** Easy stock updates during goods delivery
 
 ### 💰 Billing & Sales
+
 - **Integrated Billing:** Automatic stock deduction when generating customer bills
 - **Multi-tier Pricing:** Different prices for retail customers and wholesale dealers
 - **Multiple Payment Methods:** Support for UPI, Cash, Card, and other payment options
@@ -120,12 +126,14 @@ docker-compose up -d
 - **Customer Purchase History:** Track all customer transactions and payment records
 
 ### 📊 Business Analytics
+
 - **Growth Trends:** Visual representation of business growth and performance
 - **Sales Reports:** Track sales patterns and identify popular products
 - **Stock Movement:** Monitor inventory turnover and movement patterns
 - **Customer Insights:** Analyze customer behavior and purchase patterns
 
 ### 👤 Customer & Dealer Management
+
 - **Customer Profiles:** Detailed customer information and purchase history
 - **Payment History:** Track customer payments and outstanding amounts
 - **Credit Control:** Set purchase permissions based on payment behavior
@@ -133,18 +141,18 @@ docker-compose up -d
 - **Dealer Support:** Separate pricing and management for wholesale dealers
 
 ### 🔧 Business Operations
+
 - **Order Management:** Digital order tracking to reduce manual bookkeeping
 - **Supplier Management:** Track multiple suppliers for the same products
 - **Payment Tracking:** Monitor customer payment histories and creditworthiness
 - **Stock Alerts:** Notifications for low stock and reorder requirements
 
-
 ---
-
 
 ## 🧰 Tech Stack
 
 ### Backend
+
 - **Runtime:** Node.js 18+
 - **Framework:** Express.js
 - **Database:** MongoDB with Mongoose ODM
@@ -155,6 +163,7 @@ docker-compose up -d
 - **Testing:** Jest and Supertest
 
 ### Frontend
+
 - **Framework:** React.js 18+ with hooks
 - **Styling:** Tailwind CSS for responsive design
 - **Charts:** Chart.js and Recharts for analytics
@@ -164,6 +173,7 @@ docker-compose up -d
 - **PDF Generation:** jsPDF and react-pdf
 
 ### Utilities & Integrations
+
 - **QR Codes:** react-qr-code and qrcode libraries
 - **PDF Generation:** PDFKit for server-side PDF creation
 - **Date Handling:** Day.js for date manipulation
@@ -171,15 +181,13 @@ docker-compose up -d
 - **Development:** Nodemon, Concurrently for dev workflow
 
 ### DevOps & Deployment
+
 - **Containerization:** Docker and Docker Compose
 - **Process Management:** PM2 for production
 - **Environment:** dotenv for configuration
 - **CORS:** cors middleware for cross-origin requests
 
-
 ---
-
-
 
 ## 📁 Project Structure
 
@@ -246,9 +254,7 @@ docker-compose up -d
 └── README.md
 ```
 
-
 ---
-
 
 ## 🛣️ Roadmap & Project Status
 
@@ -272,13 +278,15 @@ docker-compose up -d
 ### �️ Development Roadmap
 
 #### Phase 1: Core Foundation (Current)
+
 - [x] Project initialization with Express backend and React frontend
 - [x] Basic project structure and documentation
-- [ ] Database schema design for products, customers, and sales
-- [ ] User authentication and authorization system
+- [x] Database schema design for products, customers, and sales
+- [x] User authentication and authorization system
 - [ ] Basic product management (CRUD operations)
 
 #### Phase 2: Stock Management
+
 - [ ] Product catalog with multi-supplier support
 - [ ] Stock tracking and inventory updates
 - [ ] Bulk product import functionality
@@ -286,6 +294,7 @@ docker-compose up -d
 - [ ] Stock level monitoring and alerts
 
 #### Phase 3: Billing System
+
 - [ ] Integrated billing with automatic stock deduction
 - [ ] Multi-tier pricing (retail vs wholesale)
 - [ ] Multiple payment method support
@@ -293,6 +302,7 @@ docker-compose up -d
 - [ ] Sales transaction recording
 
 #### Phase 4: Customer Management
+
 - [ ] Customer profile management
 - [ ] Payment history tracking
 - [ ] Credit control and purchase permissions
@@ -300,6 +310,7 @@ docker-compose up -d
 - [ ] Dealer management with separate pricing
 
 #### Phase 5: Business Analytics
+
 - [ ] Sales trend analysis and reporting
 - [ ] Growth tracking and visualization
 - [ ] Customer behavior analytics
@@ -307,6 +318,7 @@ docker-compose up -d
 - [ ] Business performance dashboard
 
 #### Phase 6: Advanced Features
+
 - [ ] Order management system
 - [ ] Multi-supplier product tracking
 - [ ] Advanced reporting and insights
@@ -320,12 +332,15 @@ docker-compose up -d
 <div align="center">
 
 ### Dashboard Overview
+
 ![Dashboard](https://via.placeholder.com/800x400/4F46E5/FFFFFF?text=Dashboard+Coming+Soon)
 
 ### Inventory Management
+
 ![Inventory](https://via.placeholder.com/800x400/059669/FFFFFF?text=Inventory+Coming+Soon)
 
 ### Sales & Billing
+
 ![Sales](https://via.placeholder.com/800x400/DC2626/FFFFFF?text=Sales+Coming+Soon)
 
 </div>
@@ -335,6 +350,7 @@ docker-compose up -d
 ## 🚀 Getting Started Guide
 
 ### For Business Owners
+
 1. **Setup:** Follow the [Quick Start](#-quick-start) guide
 2. **Configuration:** Set up your business details, tax rates, and user accounts
 3. **Catalog:** Import your product catalog or add products manually with supplier details
@@ -343,6 +359,7 @@ docker-compose up -d
 6. **Analytics:** Monitor business growth trends and customer patterns
 
 ### For Shopkeepers
+
 1. **Product Management:** Easily add products from multiple suppliers to your catalog
 2. **Stock Tracking:** Monitor goods coming in during deliveries and going out during sales
 3. **Billing:** Generate bills that automatically update your stock levels
@@ -351,6 +368,7 @@ docker-compose up -d
 6. **Business Insights:** View trends and growth to make informed business decisions
 
 ### For Developers
+
 1. **Fork** the repository and clone your fork
 2. **Setup** the development environment following our [contribution guide](#-contributing)
 3. **Explore** the codebase and review our [coding standards](CONTRIBUTING.md)
@@ -364,6 +382,7 @@ docker-compose up -d
 We welcome contributions from developers of all skill levels! Here's how you can help:
 
 ### Ways to Contribute
+
 - � **Bug Reports:** Found a bug? [Create an issue](https://github.com/your-org/stockify/issues/new?template=bug_report.md)
 - ✨ **Feature Requests:** Have an idea? [Suggest a feature](https://github.com/your-org/stockify/issues/new?template=feature_request.md)
 - 📖 **Documentation:** Improve our docs, add tutorials, or fix typos
@@ -371,6 +390,7 @@ We welcome contributions from developers of all skill levels! Here's how you can
 - 💻 **Code:** Implement new features, fix bugs, or improve performance
 
 ### Development Setup
+
 ```bash
 # Fork and clone the repository
 git clone https://github.com/Princelad/stockify.git
@@ -390,6 +410,7 @@ npm run dev
 ```
 
 ### Contribution Guidelines
+
 - Follow our [Code of Conduct](CODE_OF_CONDUCT.md)
 - Check existing [issues](https://github.com/Princelad/stockify/issues) before creating new ones
 - Follow conventional commit messages (`feat:`, `fix:`, `docs:`, etc.)
@@ -398,6 +419,7 @@ npm run dev
 - Ensure all tests pass before submitting PR
 
 ### Recognition
+
 Contributors will be featured in our [Contributors Hall of Fame](CONTRIBUTORS.md) and receive special badges based on their contributions.
 
 ---
@@ -410,18 +432,21 @@ Contributors will be featured in our [Contributors Hall of Fame](CONTRIBUTORS.md
 - [🧪 Testing Guide](docs/TESTING.md) - How to run and write tests
 - [🚀 Deployment Guide](docs/DEPLOYMENT.md) - Production deployment instructions
 - [🤝 Contributing Guidelines](CONTRIBUTING.md) - Developer contribution guide
+- [📋 Changelog](CHANGELOG.md) - Version history and release notes
 
 ---
 
 ## 🌟 Community & Support
 
 ### Get Help
+
 - 📚 [Documentation](https://stockify-docs.com) - Comprehensive guides and API docs
 - 💬 [Discord Community](https://discord.gg/stockify) - Chat with users and developers
 - 🐛 [GitHub Issues](https://github.com/Princelad/stockify/issues) - Bug reports and feature requests
 - 📧 [Email Support](mailto:support@stockify.com) - Direct support for critical issues
 
 ### Stay Updated
+
 - ⭐ **Star** this repository to show support
 - 👀 **Watch** for updates and new releases
 - 🐦 **Follow** us on [Twitter](https://twitter.com/stockifyapp)
@@ -434,6 +459,7 @@ Contributors will be featured in our [Contributors Hall of Fame](CONTRIBUTORS.md
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ### Third-party Licenses
+
 This project uses several open-source packages. See [LICENSES.md](LICENSES.md) for a complete list of third-party licenses.
 
 ---

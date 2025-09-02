@@ -1,5 +1,5 @@
-import { Sidebar } from '@/components/dashboard/Sidebar';
-import { Topbar } from '@/components/dashboard/Topbar';
+import { Sidebar } from '@/components/inventory/Sidebar';
+import { Topbar } from '@/components/inventory/Topbar';
 
 export default function Settings() {
   return (
