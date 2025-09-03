@@ -10,7 +10,6 @@ const path = require('path');
 class OCRProcessingService {
     constructor() {
         this.ocrOptions = {
-            logger: m => console.log('OCR Progress:', m.progress * 100 + '%'),
             tessdata: path.join(__dirname, '../tessdata') // Tesseract data path
         };
     }
