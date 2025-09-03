@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { AppNavbar } from "@/components/AppNavbar";
+import { Sidebar } from '@/components/inventory/Sidebar';
+import { Topbar } from '@/components/inventory/Topbar';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -18,8 +19,7 @@ import {
   Trash2, 
   AlertTriangle,
   Eye,
-  X,
-  RefreshCw
+  X
 } from "lucide-react";
 
 export default function Products() {
@@ -252,23 +252,26 @@ export default function Products() {
 
   if (loading && products.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <AppNavbar currentPage="products" />
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        </main>
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar activeSection="Products" />
+        <div className="flex-1 flex flex-col">
+          <Topbar />
+          <main className="flex-1 p-8">
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppNavbar currentPage="products" onAddProduct={() => setShowAddProduct(true)} />
-
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar activeSection="Products" />
+      <div className="flex-1 flex flex-col">
+        <Topbar />
+        <main className="flex-1 p-8">
           {error && (
             <Alert variant="destructive" className="mb-6">
               <AlertTriangle className="h-4 w-4" />
@@ -314,9 +317,15 @@ export default function Products() {
                   </div>
                 )}
               </div>
-              <div className="text-right text-sm text-gray-500">
-                <div>Press Ctrl+K to search</div>
-                <div>Press Ctrl+N to add product</div>
+              <div className="flex items-center gap-2">
+                <div className="text-right text-sm text-gray-500">
+                  <div>Press Ctrl+K to search</div>
+                  <div>Press Ctrl+N to add product</div>
+                </div>
+                <Button onClick={() => setShowAddProduct(true)} className="bg-blue-600 hover:bg-blue-700">
+                  <Package className="h-4 w-4 mr-2" />
+                  Add Product
+                </Button>
               </div>
             </div>
           </div>
@@ -682,8 +691,8 @@ export default function Products() {
               </div>
             </div>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
 
       {/* Add Product Modal */}
       <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
