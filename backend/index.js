@@ -15,7 +15,8 @@ const app = express();
 
 // Import routes
 const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products'); // ADD THIS LINE
+const productRoutes = require('./routes/products');
+const categoryRoutes = require('./routes/categoryRoutes');
 
 // Middleware
 app.use(express.json());
@@ -89,12 +90,18 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/products', productRoutes); // ADD THIS LINE
+app.use('/api/products', productRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Database connection
 mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
+    .then(async () => {
         console.log("✅ MongoDB connected successfully");
+        
+        // Seed default categories
+        const { seedDefaultCategories } = require('./controllers/categoryController');
+        await seedDefaultCategories();
+        
         const port = process.env.PORT || 5000;
         app.listen(port, () => {
             console.log(`🚀 Server running on http://localhost:${port}`);
@@ -102,6 +109,7 @@ mongoose.connect(process.env.MONGO_URI)
             console.log(`🔐 Google OAuth: http://localhost:${port}/api/auth/google`);
             console.log(`📦 Products API: http://localhost:${port}/api/products`);
             console.log(`📊 Dashboard Stats: http://localhost:${port}/api/products/dashboard-stats`);
+            console.log(`🏷️ Categories API: http://localhost:${port}/api/categories`);
         });
     })
     .catch((err) => {

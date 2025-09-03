@@ -1,282 +1,496 @@
-import { useState } from 'react';
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
-import { Plus, Tag, Search, Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AppNavbar } from '@/components/AppNavbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-
-interface Category {
-  id: string;
-  name: string;
-  description: string;
-  productCount: number;
-  color: string;
-  createdAt: string;
-}
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { apiService } from '@/lib/api';
+import type { Category } from '@/types/product';
+import { 
+  Plus, 
+  Tag, 
+  Search, 
+  Edit, 
+  Trash2, 
+  Sparkles, 
+  User, 
+  Package, 
+  Loader2,
+  AlertTriangle,
+  RefreshCw
+} from 'lucide-react';
 
 export default function Categories() {
-  const [categories, setCategories] = useState<Category[]>([
-    {
-      id: '1',
-      name: 'Electronics',
-      description: 'Electronic devices and accessories',
-      productCount: 45,
-      color: 'bg-blue-100 text-blue-800',
-      createdAt: '2024-01-15'
-    },
-    {
-      id: '2',
-      name: 'Clothing',
-      description: 'Apparel and fashion items',
-      productCount: 28,
-      color: 'bg-green-100 text-green-800',
-      createdAt: '2024-01-20'
-    },
-    {
-      id: '3',
-      name: 'Home & Garden',
-      description: 'Home improvement and gardening supplies',
-      productCount: 32,
-      color: 'bg-purple-100 text-purple-800',
-      createdAt: '2024-01-25'
-    }
-  ]);
-  
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [popularCategories, setPopularCategories] = useState<Category[]>([]);
+  const [userCategories, setUserCategories] = useState<Category[]>([]);
+  const [productCategories, setProductCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    color: 'bg-blue-100 text-blue-800'
+    description: ''
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  const colors = [
-    'bg-blue-100 text-blue-800',
-    'bg-green-100 text-green-800',
-    'bg-purple-100 text-purple-800',
-    'bg-red-100 text-red-800',
-    'bg-yellow-100 text-yellow-800',
-    'bg-indigo-100 text-indigo-800',
-    'bg-pink-100 text-pink-800',
-    'bg-gray-100 text-gray-800'
-  ];
+  // Fetch categories on component mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
 
-  const filteredCategories = categories.filter(category =>
-    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    category.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingCategory) {
-      setCategories(prev => prev.map(cat => 
-        cat.id === editingCategory.id 
-          ? { ...cat, ...formData }
-          : cat
-      ));
-    } else {
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        ...formData,
-        productCount: 0,
-        createdAt: new Date().toISOString().split('T')[0]
-      };
-      setCategories(prev => [...prev, newCategory]);
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await apiService.getCategories();
+      
+      if (response.success && response.data) {
+        const { categories: allCategories, popular, userCreated, fromProducts } = response.data;
+        
+        setCategories(allCategories || []);
+        setPopularCategories(popular || []);
+        setUserCategories(userCreated || []);
+        setProductCategories(fromProducts || []);
+      } else {
+        setError('Failed to load categories');
+        setCategories([]);
+      }
+    } catch (err) {
+      console.error('Error fetching categories:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load categories');
+      setCategories([]);
+    } finally {
+      setLoading(false);
     }
-    
-    setFormData({ name: '', description: '', color: 'bg-blue-100 text-blue-800' });
-    setIsAddDialogOpen(false);
-    setEditingCategory(null);
+  };
+
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim()) return;
+
+    try {
+      setSubmitting(true);
+      setError(null);
+      
+      const response = await apiService.createCategory({
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined
+      });
+
+      if (response.success) {
+        // Refresh categories list
+        await fetchCategories();
+        
+        // Reset form and close dialog
+        setFormData({ name: '', description: '' });
+        setIsAddDialogOpen(false);
+        setEditingCategory(null);
+      } else {
+        setError(response.message || 'Failed to create category');
+      }
+    } catch (err) {
+      console.error('Error creating category:', err);
+      setError(err instanceof Error ? err.message : 'Failed to create category');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleEdit = (category: Category) => {
-    setEditingCategory(category);
-    setFormData({
-      name: category.name,
-      description: category.description,
-      color: category.color
-    });
-    setIsAddDialogOpen(true);
-  };
-
-  const handleDelete = (categoryId: string) => {
-    if (confirm('Are you sure you want to delete this category?')) {
-      setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    if (category.type === 'user_created') {
+      setEditingCategory(category);
+      setFormData({
+        name: category.name,
+        description: category.description || ''
+      });
+      setIsAddDialogOpen(true);
     }
   };
 
+  const handleDelete = async (category: Category) => {
+    if (category.type !== 'user_created') {
+      alert('Only user-created categories can be deleted.');
+      return;
+    }
+
+    if (category.count > 0) {
+      alert(`Cannot delete category "${category.name}". It is being used by ${category.count} product(s).`);
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete "${category.name}"?`)) {
+      try {
+        // TODO: Implement delete API call
+        console.log('Delete category:', category._id);
+        alert('Delete functionality will be implemented soon.');
+      } catch (err) {
+        console.error('Error deleting category:', err);
+        setError('Failed to delete category');
+      }
+    }
+  };
+
+  const getCategoryIcon = (category: Category) => {
+    if (category.isPopular) return <Sparkles className="h-4 w-4 text-yellow-500" />;
+    if (category.type === 'user_created') return <User className="h-4 w-4 text-blue-500" />;
+    if (category.type === 'from_products') return <Package className="h-4 w-4 text-green-500" />;
+    return <Tag className="h-4 w-4 text-gray-500" />;
+  };
+
+  const getCategoryBadgeVariant = (category: Category) => {
+    if (category.isPopular) return 'default';
+    if (category.type === 'user_created') return 'secondary';
+    return 'outline';
+  };
+
+  const getCategoryTypeLabel = (category: Category) => {
+    if (category.isPopular) return 'Popular';
+    if (category.type === 'user_created') return 'User Created';
+    if (category.type === 'from_products') return 'From Products';
+    return 'Default';
+  };
+
+  // Filter categories based on search term
+  const filteredCategories = categories.filter(category =>
+    category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AppNavbar currentPage="categories" />
+        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <p className="text-gray-600">Loading categories...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeSection="Inventory" />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8">
+    <div className="min-h-screen bg-gray-50">
+      <AppNavbar currentPage="categories" />
+      
+      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="px-4 py-6 sm:px-0">
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>
+                {error}
+                <Button
+                  variant="link"
+                  size="sm"
+                  className="p-0 h-auto ml-2"
+                  onClick={fetchCategories}
+                >
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Header */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="mb-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                   <Tag className="h-6 w-6 text-blue-600" />
-                  Categories
-                </h1>
-                <p className="text-gray-600 mt-1">Manage product categories and organization</p>
+                  Categories Management
+                </h2>
+                <p className="text-gray-600 mt-1">
+                  Organize your products with categories. {categories.length} total categories.
+                </p>
               </div>
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    className="bg-blue-600 hover:bg-blue-700"
-                    onClick={() => {
-                      setEditingCategory(null);
-                      setFormData({ name: '', description: '', color: 'bg-blue-100 text-blue-800' });
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Category
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <form onSubmit={handleSubmit}>
-                    <DialogHeader>
-                      <DialogTitle>
-                        {editingCategory ? 'Edit Category' : 'Add New Category'}
-                      </DialogTitle>
-                      <DialogDescription>
-                        {editingCategory ? 'Update category information' : 'Create a new product category'}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="name">Category Name</Label>
-                        <Input
-                          id="name"
-                          value={formData.name}
-                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                          placeholder="Enter category name"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="description">Description</Label>
-                        <Textarea
-                          id="description"
-                          value={formData.description}
-                          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="Enter category description"
-                          rows={3}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Color Theme</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {colors.map((color) => (
-                            <button
-                              key={color}
-                              type="button"
-                              onClick={() => setFormData(prev => ({ ...prev, color }))}
-                              className={`px-3 py-1 rounded-full text-xs font-medium ${color} ${
-                                formData.color === color ? 'ring-2 ring-offset-2 ring-gray-400' : ''
-                              }`}
-                            >
-                              Sample
-                            </button>
-                          ))}
+              <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={fetchCategories}
+                  disabled={loading}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700"
+                      onClick={() => {
+                        setEditingCategory(null);
+                        setFormData({ name: '', description: '' });
+                        setError(null);
+                      }}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Category
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <form onSubmit={handleCreateCategory}>
+                      <DialogHeader>
+                        <DialogTitle>
+                          {editingCategory ? 'Edit Category' : 'Create New Category'}
+                        </DialogTitle>
+                        <DialogDescription>
+                          {editingCategory 
+                            ? 'Update category information' 
+                            : 'Create a custom category for your products'
+                          }
+                        </DialogDescription>
+                      </DialogHeader>
+                      
+                      {error && (
+                        <Alert variant="destructive" className="my-4">
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertDescription>{error}</AlertDescription>
+                        </Alert>
+                      )}
+                      
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Category Name</Label>
+                          <Input
+                            id="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="Enter category name"
+                            required
+                            disabled={submitting}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="description">Description (Optional)</Label>
+                          <Textarea
+                            id="description"
+                            value={formData.description}
+                            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                            placeholder="Enter category description"
+                            rows={3}
+                            disabled={submitting}
+                          />
                         </div>
                       </div>
-                    </div>
-                    <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button type="submit">
-                        {editingCategory ? 'Update' : 'Create'}
-                      </Button>
-                    </DialogFooter>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                      
+                      <DialogFooter>
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => {
+                            setIsAddDialogOpen(false);
+                            setError(null);
+                          }}
+                          disabled={submitting}
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          type="submit" 
+                          disabled={!formData.name.trim() || submitting}
+                        >
+                          {submitting ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              {editingCategory ? 'Updating...' : 'Creating...'}
+                            </>
+                          ) : (
+                            <>
+                              {editingCategory ? 'Update' : 'Create'}
+                            </>
+                          )}
+                        </Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
 
           {/* Search Bar */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  placeholder="Search categories..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <Card className="mb-6">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Search categories by name or description..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                {searchTerm && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSearchTerm('')}
+                  >
+                    Clear
+                  </Button>
+                )}
               </div>
-            </div>
+            </CardContent>
+          </Card>
+
+          {/* Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Categories</CardTitle>
+                <Tag className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{categories.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  All category types
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Popular Categories</CardTitle>
+                <Sparkles className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{popularCategories.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Predefined popular
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Your Categories</CardTitle>
+                <User className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userCategories.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Custom created
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">From Products</CardTitle>
+                <Package className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{productCategories.length}</div>
+                <p className="text-xs text-muted-foreground">
+                  Derived from products
+                </p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Categories Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredCategories.map((category) => (
-              <div key={category.id} className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between mb-4">
-                  <Badge className={category.color}>
-                    {category.name}
-                  </Badge>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(category)}
-                      className="text-gray-400 hover:text-blue-600 transition-colors"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(category.id)}
-                      className="text-gray-400 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-                
-                <p className="text-gray-600 text-sm mb-4">{category.description}</p>
-                
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">{category.productCount}</p>
-                    <p className="text-xs text-gray-500">Products</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500">Created</p>
-                    <p className="text-sm font-medium">{category.createdAt}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {filteredCategories.length === 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-12 text-center">
-              <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No categories found</h3>
-              <p className="text-gray-500 mb-4">
-                {searchTerm ? 'No categories match your search.' : 'Get started by creating your first category.'}
-              </p>
-              {!searchTerm && (
-                <Button 
-                  onClick={() => setIsAddDialogOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Category
-                </Button>
-              )}
+          {filteredCategories.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredCategories.map((category) => (
+                <Card key={category._id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-2">
+                        {getCategoryIcon(category)}
+                        <Badge variant={getCategoryBadgeVariant(category)} className="text-xs">
+                          {getCategoryTypeLabel(category)}
+                        </Badge>
+                      </div>
+                      <div className="flex space-x-1">
+                        {category.type === 'user_created' && (
+                          <>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEdit(category)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(category)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <h3 className="font-semibold text-lg mb-2">{category.name}</h3>
+                    {category.description && (
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                        {category.description}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-2xl font-bold text-gray-900">{category.count}</p>
+                        <p className="text-xs text-gray-500">Products</p>
+                      </div>
+                      {category.isPopular && (
+                        <div className="flex items-center text-yellow-600">
+                          <Sparkles className="h-4 w-4 mr-1" />
+                          <span className="text-xs font-medium">Popular</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
+          ) : (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <Tag className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {searchTerm ? 'No matching categories' : 'No categories found'}
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  {searchTerm 
+                    ? `No categories match "${searchTerm}". Try a different search term.`
+                    : 'Get started by creating your first custom category.'
+                  }
+                </p>
+                {!searchTerm && (
+                  <Button 
+                    onClick={() => {
+                      setIsAddDialogOpen(true);
+                      setError(null);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Category
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
           )}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

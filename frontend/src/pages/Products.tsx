@@ -18,7 +18,8 @@ import {
   Trash2, 
   AlertTriangle,
   Eye,
-  X
+  X,
+  RefreshCw
 } from "lucide-react";
 
 export default function Products() {
@@ -27,36 +28,87 @@ export default function Products() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: 10,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const [filters, setFilters] = useState<ProductFilters>({
     page: 1,
     limit: 10,
-    sortBy: 'name',
-    sortOrder: 'asc'
+    sortBy: 'createdAt',
+    sortOrder: 'desc'
   });
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [searchDebounceTimer, setSearchDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
         const [productsResponse, categoriesResponse, suppliersResponse] = await Promise.all([
           apiService.getProducts(filters),
           apiService.getCategories(),
           apiService.getSuppliers()
         ]);
 
-        if (productsResponse.success) {
-          setProducts(productsResponse.data!);
+        // Handle products response with pagination
+        if (productsResponse.success && productsResponse.data) {
+          const { products: productData, pagination: paginationData } = productsResponse.data;
+          if (Array.isArray(productData)) {
+            setProducts(productData);
+          } else {
+            setProducts([]);
+          }
+          
+          // Update pagination state
+          if (paginationData) {
+            setPagination(paginationData);
+          }
+        } else {
+          setProducts([]);
         }
-        if (categoriesResponse.success) {
-          setCategories(categoriesResponse.data!);
+
+        // Handle categories response
+        if (categoriesResponse.success && categoriesResponse.data) {
+          const { categories: categoryData } = categoriesResponse.data;
+          if (Array.isArray(categoryData)) {
+            setCategories(categoryData);
+          } else {
+            setCategories([]);
+          }
+        } else {
+          setCategories([]);
         }
-        if (suppliersResponse.success) {
-          setSuppliers(suppliersResponse.data!);
+
+        // Handle suppliers response  
+        if (suppliersResponse.success && Array.isArray(suppliersResponse.data)) {
+          setSuppliers(suppliersResponse.data);
+        } else {
+          setSuppliers([]);
         }
+
       } catch (err) {
+        console.error('Error fetching data:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch data');
+        // Set default empty arrays to prevent map errors
+        setProducts([]);
+        setCategories([]);
+        setSuppliers([]);
+        setPagination({
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 0,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false
+        });
       } finally {
         setLoading(false);
       }
@@ -66,20 +118,78 @@ export default function Products() {
   }, [filters]);
 
   const handleFilterChange = (key: keyof ProductFilters, value: any) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value,
-      page: key !== 'page' ? 1 : value // Reset to page 1 when changing other filters
-    }));
+    // Clear existing search debounce timer
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+    }
+
+    // For search, use debouncing to avoid too many API calls
+    if (key === 'search') {
+      const timer = setTimeout(() => {
+        setFilters(prev => ({
+          ...prev,
+          [key]: value,
+          page: 1 // Reset to page 1 when searching
+        }));
+      }, 500); // 500ms delay
+      setSearchDebounceTimer(timer);
+    } else {
+      // For other filters, update immediately
+      setFilters(prev => ({
+        ...prev,
+        [key]: value,
+        page: key !== 'page' ? 1 : value // Reset to page 1 when changing other filters
+      }));
+    }
   };
 
   const clearFilters = () => {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+    }
     setFilters({
       page: 1,
       limit: 10,
-      sortBy: 'name',
-      sortOrder: 'asc'
+      sortBy: 'createdAt',
+      sortOrder: 'desc'
     });
+  };
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+      }
+    };
+  }, [searchDebounceTimer]);
+
+  const refreshProducts = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const productsResponse = await apiService.getProducts(filters);
+      
+      if (productsResponse.success && productsResponse.data) {
+        const { products: productData, pagination: paginationData } = productsResponse.data;
+        if (Array.isArray(productData)) {
+          setProducts(productData);
+        } else {
+          setProducts([]);
+        }
+        
+        if (paginationData) {
+          setPagination(paginationData);
+        }
+      } else {
+        setProducts([]);
+      }
+    } catch (err) {
+      console.error('Error refreshing products:', err);
+      setError(err instanceof Error ? err.message : 'Failed to refresh products');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const formatCurrency = (amount: number) => {
@@ -103,7 +213,44 @@ export default function Products() {
     return typeof supplier === 'string' ? '' : supplier.contact || '';
   };
 
-  if (loading) {
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl/Cmd + K for search focus
+      if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+        event.preventDefault();
+        const searchInput = document.querySelector('input[placeholder*="Search"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }
+      
+      // Ctrl/Cmd + N for new product
+      if ((event.ctrlKey || event.metaKey) && event.key === 'n') {
+        event.preventDefault();
+        setShowAddProduct(true);
+      }
+      
+      // Ctrl/Cmd + R for refresh
+      if ((event.ctrlKey || event.metaKey) && event.key === 'r') {
+        event.preventDefault();
+        refreshProducts();
+      }
+      
+      // Escape to close modals
+      if (event.key === 'Escape') {
+        setShowAddProduct(false);
+        setSelectedProduct(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [refreshProducts]);
+
+  if (loading && products.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <AppNavbar currentPage="products" />
@@ -131,8 +278,47 @@ export default function Products() {
 
           {/* Header */}
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Product Inventory</h2>
-            <p className="text-gray-600 mt-1">Manage your product catalog and inventory levels</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Product Inventory</h2>
+                <p className="text-gray-600 mt-1">Manage your product catalog and inventory levels</p>
+                {/* Active filters indicator */}
+                {(filters.search || filters.category || filters.supplier || filters.lowStock || filters.outOfStock) && (
+                  <div className="flex items-center space-x-2 mt-2">
+                    <span className="text-sm text-gray-500">Active filters:</span>
+                    {filters.search && (
+                      <Badge variant="secondary" className="text-xs">
+                        Search: "{filters.search}"
+                      </Badge>
+                    )}
+                    {filters.category && (
+                      <Badge variant="secondary" className="text-xs">
+                        Category: {filters.category}
+                      </Badge>
+                    )}
+                    {filters.supplier && (
+                      <Badge variant="secondary" className="text-xs">
+                        Supplier: {filters.supplier}
+                      </Badge>
+                    )}
+                    {filters.lowStock && (
+                      <Badge variant="warning" className="text-xs">
+                        Low Stock
+                      </Badge>
+                    )}
+                    {filters.outOfStock && (
+                      <Badge variant="destructive" className="text-xs">
+                        Out of Stock
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="text-right text-sm text-gray-500">
+                <div>Press Ctrl+K to search</div>
+                <div>Press Ctrl+N to add product</div>
+              </div>
+            </div>
           </div>
 
           {/* Filters and Search */}
@@ -142,11 +328,21 @@ export default function Products() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Search products..."
+                    placeholder="Search products, SKU, category..."
                     value={filters.search || ''}
                     onChange={(e) => handleFilterChange('search', e.target.value)}
                     className="pl-10"
                   />
+                  {filters.search && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                      onClick={() => handleFilterChange('search', '')}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  )}
                 </div>
                 
                 <Select value={filters.category || 'all'} onValueChange={(value) => handleFilterChange('category', value === 'all' ? undefined : value)}>
@@ -155,11 +351,88 @@ export default function Products() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(category => (
-                      <SelectItem key={category._id} value={category.name}>
-                        {category.name} ({category.count})
+                    
+                    {/* Popular Categories */}
+                    {categories.filter(cat => cat.isPopular).length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                          ⭐ Popular
+                        </div>
+                        {categories.filter(cat => cat.isPopular).map(category => (
+                          <SelectItem key={category._id} value={category.name}>
+                            <div className="flex items-center justify-between w-full">
+                              <span>{category.name}</span>
+                              <Badge variant="secondary" className="ml-2 text-xs">
+                                {category.count}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* User Created Categories */}
+                    {categories.filter(cat => cat.type === 'user_created').length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 border-t">
+                          👤 Your Categories
+                        </div>
+                        {categories.filter(cat => cat.type === 'user_created').map(category => (
+                          <SelectItem key={category._id} value={category.name}>
+                            <div className="flex items-center justify-between w-full">
+                              <span>{category.name}</span>
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                {category.count}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Categories from Products */}
+                    {categories.filter(cat => cat.type === 'from_products').length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 border-t">
+                          📦 From Products
+                        </div>
+                        {categories.filter(cat => cat.type === 'from_products').map(category => (
+                          <SelectItem key={category._id} value={category.name}>
+                            <div className="flex items-center justify-between w-full">
+                              <span>{category.name}</span>
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                {category.count}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {/* Other Categories */}
+                    {categories.filter(cat => !cat.isPopular && cat.type !== 'user_created' && cat.type !== 'from_products').length > 0 && (
+                      <>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50 border-t">
+                          📂 Other
+                        </div>
+                        {categories.filter(cat => !cat.isPopular && cat.type !== 'user_created' && cat.type !== 'from_products').map(category => (
+                          <SelectItem key={category._id} value={category.name}>
+                            <div className="flex items-center justify-between w-full">
+                              <span>{category.name}</span>
+                              <Badge variant="outline" className="ml-2 text-xs">
+                                {category.count}
+                              </Badge>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </>
+                    )}
+
+                    {Array.isArray(categories) && categories.length === 0 && (
+                      <SelectItem value="no-categories" disabled>
+                        <div className="text-gray-500 text-sm">No categories available</div>
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
 
@@ -169,7 +442,7 @@ export default function Products() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Suppliers</SelectItem>
-                    {suppliers.map(supplier => (
+                    {Array.isArray(suppliers) && suppliers.map(supplier => (
                       <SelectItem key={supplier._id} value={supplier.name}>
                         {supplier.name} ({supplier.productCount})
                       </SelectItem>
@@ -184,7 +457,7 @@ export default function Products() {
                     onClick={() => handleFilterChange('lowStock', !filters.lowStock)}
                   >
                     <AlertTriangle className="h-4 w-4 mr-1" />
-                    Low Stock
+                    Low Stock {filters.lowStock && '✓'}
                   </Button>
                   <Button
                     variant={filters.outOfStock ? "default" : "outline"}
@@ -192,16 +465,27 @@ export default function Products() {
                     onClick={() => handleFilterChange('outOfStock', !filters.outOfStock)}
                   >
                     <X className="h-4 w-4 mr-1" />
-                    Out of Stock
+                    Out of Stock {filters.outOfStock && '✓'}
                   </Button>
                 </div>
               </div>
 
               <div className="flex justify-between items-center">
                 <div className="text-sm text-gray-600">
-                  Showing {products.length} products
+                  Showing {products.length} of {pagination.totalItems} products
+                  {filters.search && ` for "${filters.search}"`}
+                  {filters.category && ` in ${filters.category}`}
+                  {filters.supplier && ` from ${filters.supplier}`}
                 </div>
                 <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={refreshProducts}
+                    disabled={loading}
+                  >
+                    {loading ? 'Refreshing...' : 'Refresh'}
+                  </Button>
                   <Select value={`${filters.sortBy}-${filters.sortOrder}`} onValueChange={(value) => {
                     const [sortBy, sortOrder] = value.split('-');
                     setFilters(prev => ({ ...prev, sortBy, sortOrder: sortOrder as 'asc' | 'desc' }));
@@ -214,8 +498,8 @@ export default function Products() {
                       <SelectItem value="name-desc">Name (Z-A)</SelectItem>
                       <SelectItem value="sellingPrice-asc">Price (Low to High)</SelectItem>
                       <SelectItem value="sellingPrice-desc">Price (High to Low)</SelectItem>
-                      <SelectItem value="stock-asc">Stock (Low to High)</SelectItem>
-                      <SelectItem value="stock-desc">Stock (High to Low)</SelectItem>
+                      <SelectItem value="currentStock-asc">Stock (Low to High)</SelectItem>
+                      <SelectItem value="currentStock-desc">Stock (High to Low)</SelectItem>
                       <SelectItem value="createdAt-desc">Newest First</SelectItem>
                       <SelectItem value="createdAt-asc">Oldest First</SelectItem>
                     </SelectContent>
@@ -230,7 +514,15 @@ export default function Products() {
           </Card>
 
           {/* Products Table */}
-          <Card>
+          <Card className="relative">
+            {loading && (
+              <div className="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <span className="text-sm text-gray-600">Loading products...</span>
+                </div>
+              </div>
+            )}
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
@@ -318,21 +610,32 @@ export default function Products() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => setSelectedProduct(product)}
+                                  title="View Details"
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {/* Handle edit */}}
+                                  onClick={() => {
+                                    // TODO: Implement edit functionality
+                                    console.log('Edit product:', product._id);
+                                  }}
+                                  title="Edit Product"
                                 >
                                   <Edit className="h-4 w-4" />
                                 </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => {/* Handle delete */}}
+                                  onClick={() => {
+                                    // TODO: Implement delete with confirmation
+                                    if (window.confirm(`Are you sure you want to delete ${product.name}?`)) {
+                                      console.log('Delete product:', product._id);
+                                    }
+                                  }}
                                   className="text-red-600 hover:text-red-700"
+                                  title="Delete Product"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
@@ -349,25 +652,30 @@ export default function Products() {
           </Card>
 
           {/* Pagination */}
-          {products.length > 0 && (
+          {pagination.totalItems > 0 && (
             <div className="mt-6 flex items-center justify-between">
               <div className="text-sm text-gray-700">
-                Page {filters.page || 1} of {Math.ceil(products.length / (filters.limit || 10))}
+                Showing {Math.min((pagination.currentPage - 1) * pagination.itemsPerPage + 1, pagination.totalItems)} - {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} of {pagination.totalItems} products
               </div>
-              <div className="flex space-x-2">
+              <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleFilterChange('page', (filters.page || 1) - 1)}
-                  disabled={(filters.page || 1) <= 1}
+                  onClick={() => handleFilterChange('page', pagination.currentPage - 1)}
+                  disabled={!pagination.hasPrevPage}
                 >
                   Previous
                 </Button>
+                <div className="flex items-center space-x-1">
+                  <span className="text-sm text-gray-500">
+                    Page {pagination.currentPage} of {pagination.totalPages}
+                  </span>
+                </div>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => handleFilterChange('page', (filters.page || 1) + 1)}
-                  disabled={products.length < (filters.limit || 10)}
+                  onClick={() => handleFilterChange('page', pagination.currentPage + 1)}
+                  disabled={!pagination.hasNextPage}
                 >
                   Next
                 </Button>
@@ -383,8 +691,8 @@ export default function Products() {
           <FixedAddProduct
             onSuccess={() => {
               setShowAddProduct(false);
-              // Refresh the products list
-              window.location.reload();
+              // Refresh the products list instead of full page reload
+              refreshProducts();
             }}
             onCancel={() => setShowAddProduct(false)}
           />

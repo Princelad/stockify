@@ -7,8 +7,8 @@ import type {
   ProductFilters, 
   CreateProductRequest, 
   StockUpdateRequest,
-  Category,
-  Supplier
+  Supplier,
+  Category
 } from '@/types/product';
 
 // API response types
@@ -24,6 +24,26 @@ export interface ApiResponse<T = any> {
     total: number;
     pages: number;
   };
+}
+
+export interface ProductsResponse {
+  products: Product[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+}
+
+export interface CategoriesResponse {
+  categories: Category[];
+  popular: Category[];
+  userCreated: Category[];
+  fromProducts: Category[];
+  total: number;
 }
 
 export interface User {
@@ -172,7 +192,7 @@ class ApiService {
     });
   }
 
-  async getProducts(filters?: ProductFilters): Promise<ApiResponse<Product[]>> {
+  async getProducts(filters?: ProductFilters): Promise<ApiResponse<ProductsResponse>> {
     const queryParams = new URLSearchParams();
     
     if (filters) {
@@ -224,8 +244,21 @@ class ApiService {
     });
   }
 
-  async getCategories(): Promise<ApiResponse<Category[]>> {
-    return this.request('/products/categories', {
+  async getCategories(): Promise<ApiResponse<CategoriesResponse>> {
+    return this.request('/categories', {
+      method: 'GET',
+    });
+  }
+
+  async createCategory(categoryData: { name: string; description?: string }): Promise<ApiResponse> {
+    return this.request('/categories', {
+      method: 'POST',
+      body: JSON.stringify(categoryData),
+    });
+  }
+
+  async getPopularCategories(): Promise<ApiResponse<Category[]>> {
+    return this.request('/categories/popular', {
       method: 'GET',
     });
   }

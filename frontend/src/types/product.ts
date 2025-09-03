@@ -144,7 +144,11 @@ export interface StockUpdateRequest {
 export interface Category {
   _id: string;
   name: string;
+  description?: string;
   count: number;
+  isPopular?: boolean;
+  isDefault?: boolean;
+  type?: 'predefined' | 'user_created' | 'from_products';
 }
 
 export interface Supplier {

@@ -1,4 +1,5 @@
 const Product = require('../models/Product');
+const Category = require('../models/Category');
 const mongoose = require('mongoose');
 
 /**
@@ -689,6 +690,31 @@ const createProduct = async (req, res) => {
         const savedProduct = await product.save();
         await savedProduct.populate('createdBy', 'name email');
 
+        // If product has a category, ensure it exists in Category collection
+        if (savedProduct.category) {
+            try {
+                // Check if category already exists
+                const existingCategory = await Category.findOne({
+                    name: { $regex: new RegExp(`^${savedProduct.category.trim()}$`, 'i') },
+                    isActive: true
+                });
+
+                if (!existingCategory) {
+                    // Create category from product if it doesn't exist
+                    const newCategory = new Category({
+                        name: savedProduct.category.trim(),
+                        type: 'from_products',
+                        isDefault: false,
+                        isPopular: false
+                    });
+                    await newCategory.save();
+                }
+            } catch (categoryError) {
+                console.error('Error handling category for product:', categoryError);
+                // Don't fail the product creation if category creation fails
+            }
+        }
+
         res.status(201).json({
             success: true,
             message: 'Product created successfully',
@@ -740,6 +766,31 @@ const updateProduct = async (req, res) => {
                 success: false,
                 message: 'Product not found or you do not have permission to update it'
             });
+        }
+
+        // If product has a new category, ensure it exists in Category collection
+        if (product.category && req.body.category) {
+            try {
+                // Check if category already exists
+                const existingCategory = await Category.findOne({
+                    name: { $regex: new RegExp(`^${product.category.trim()}$`, 'i') },
+                    isActive: true
+                });
+
+                if (!existingCategory) {
+                    // Create category from product if it doesn't exist
+                    const newCategory = new Category({
+                        name: product.category.trim(),
+                        type: 'from_products',
+                        isDefault: false,
+                        isPopular: false
+                    });
+                    await newCategory.save();
+                }
+            } catch (categoryError) {
+                console.error('Error handling category for product update:', categoryError);
+                // Don't fail the product update if category creation fails
+            }
         }
 
         res.json({

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Package, Plus } from "lucide-react";
 
 interface AppNavbarProps {
-  currentPage?: 'dashboard' | 'products' | 'sales';
+  currentPage?: 'dashboard' | 'products' | 'sales' | 'categories';
   onAddProduct?: () => void;
 }
 
@@ -13,6 +13,7 @@ export function AppNavbar({ currentPage, onAddProduct }: AppNavbarProps) {
   const navItems = [
     { key: 'dashboard', label: 'Dashboard', href: '/dashboard' },
     { key: 'products', label: 'Products', href: '/products' },
+    { key: 'categories', label: 'Categories', href: '/categories' },
     { key: 'sales', label: 'Sales', href: '#' },
   ];
 
