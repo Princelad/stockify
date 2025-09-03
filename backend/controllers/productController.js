@@ -1,6 +1,8 @@
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const mongoose = require('mongoose');
+const pdfProcessingService = require('../services/pdfProcessingService');
+const fs = require('fs');
 
 /**
  * GET DASHBOARD STATISTICS
@@ -996,6 +998,320 @@ const getSuppliers = async (req, res) => {
     }
 };
 
+/**
+ * PDF BULK IMPORT - PROCESS PDF FILE
+ * Purpose: Extract product data from PDF files using AI/ML techniques
+ * Features: Multiple extraction methods, intelligent field mapping, validation
+ */
+const processPDFImport = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No PDF file uploaded'
+            });
+        }
+
+        console.log('Processing PDF file:', req.file.filename);
+
+        const { 
+            supplierName = 'PDF Import',
+            supplierContact = '',
+            supplierEmail = '',
+            supplierAddress = '',
+            defaultCategory = 'Imported',
+            priceType = 'selling' // 'selling' or 'cost'
+        } = req.body;
+
+        // Create supplier info
+        const supplierInfo = {
+            name: supplierName,
+            contact: supplierContact,
+            email: supplierEmail,
+            address: supplierAddress
+        };
+
+        // Process PDF file
+        const extractionResult = await pdfProcessingService.processPDF(
+            req.file.path,
+            {
+                defaultCategory,
+                priceType,
+                supplierInfo
+            }
+        );
+
+        // Clean up uploaded file
+        try {
+            fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+            console.error('File cleanup error:', cleanupError);
+        }
+
+        if (!extractionResult.success) {
+            return res.status(400).json({
+                success: false,
+                message: 'Failed to process PDF file',
+                error: extractionResult.error
+            });
+        }
+
+        const { products, summary } = extractionResult.data;
+
+        // Enhance products with user and supplier info
+        const enhancedProducts = products.map(product => ({
+            ...product,
+            supplier: supplierInfo,
+            createdBy: req.user._id,
+            category: product.category || defaultCategory
+        }));
+
+        res.json({
+            success: true,
+            message: 'PDF processed successfully',
+            data: {
+                extractionSummary: summary,
+                products: enhancedProducts,
+                preview: enhancedProducts.slice(0, 5), // First 5 products for preview
+                supplierInfo,
+                recommendations: {
+                    totalProducts: enhancedProducts.length,
+                    estimatedSuccessRate: summary.confidence,
+                    fieldCoverage: summary.fieldsFound,
+                    suggestedActions: generateImportSuggestions(summary, enhancedProducts)
+                }
+            }
+        });
+    } catch (error) {
+        console.error('PDF import processing error:', error);
+        
+        // Clean up file if it exists
+        if (req.file && fs.existsSync(req.file.path)) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (cleanupError) {
+                console.error('File cleanup error:', cleanupError);
+            }
+        }
+        
+        res.status(500).json({
+            success: false,
+            message: 'Error processing PDF file',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * PDF BULK IMPORT - CONFIRM AND IMPORT
+ * Purpose: Import products after user confirmation and any manual adjustments
+ */
+const confirmPDFImport = async (req, res) => {
+    try {
+        const { 
+            products, 
+            supplierInfo, 
+            importOptions = {} 
+        } = req.body;
+
+        if (!Array.isArray(products) || products.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No products provided for import'
+            });
+        }
+
+        // Validate products before import
+        const validationResults = validateProductsForImport(products);
+        
+        if (validationResults.errors.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Product validation failed',
+                errors: validationResults.errors,
+                validProducts: validationResults.validProducts
+            });
+        }
+
+        // Use existing bulk import functionality
+        const importResult = await bulkImportProducts(
+            { 
+                body: { 
+                    products: validationResults.validProducts, 
+                    supplierInfo, 
+                    importOptions 
+                },
+                user: req.user 
+            }, 
+            res
+        );
+
+        // Don't call res.json again since bulkImportProducts already sends response
+        return;
+
+    } catch (error) {
+        console.error('PDF import confirmation error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error confirming PDF import',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * PREVIEW PDF EXTRACTION
+ * Purpose: Show extracted data without importing for user review
+ */
+const previewPDFExtraction = async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({
+                success: false,
+                message: 'No PDF file uploaded'
+            });
+        }
+
+        const extractionResult = await pdfProcessingService.processPDF(req.file.path);
+
+        // Clean up file
+        try {
+            fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+            console.error('File cleanup error:', cleanupError);
+        }
+
+        if (!extractionResult.success) {
+            return res.status(400).json(extractionResult);
+        }
+
+        res.json({
+            success: true,
+            message: 'PDF extraction preview generated',
+            data: {
+                summary: extractionResult.data.summary,
+                sampleProducts: extractionResult.data.products.slice(0, 10),
+                extractedText: extractionResult.data.extractedText.substring(0, 1000) + '...',
+                recommendations: {
+                    confidence: extractionResult.data.summary.confidence,
+                    suggestedMethod: extractionResult.data.summary.method,
+                    fieldQuality: analyzeFieldQuality(extractionResult.data.products)
+                }
+            }
+        });
+    } catch (error) {
+        console.error('PDF preview error:', error);
+        
+        if (req.file && fs.existsSync(req.file.path)) {
+            try {
+                fs.unlinkSync(req.file.path);
+            } catch (cleanupError) {
+                console.error('File cleanup error:', cleanupError);
+            }
+        }
+        
+        res.status(500).json({
+            success: false,
+            message: 'Error generating PDF preview',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Helper Functions for PDF Import
+ */
+function generateImportSuggestions(summary, products) {
+    const suggestions = [];
+    
+    if (summary.confidence < 0.5) {
+        suggestions.push('Low confidence extraction. Consider manual review of products.');
+    }
+    
+    if (summary.fieldsFound.price && summary.fieldsFound.price.percentage < 80) {
+        suggestions.push('Many products missing price information. Consider adding default pricing.');
+    }
+    
+    if (summary.fieldsFound.sku && summary.fieldsFound.sku.percentage < 50) {
+        suggestions.push('SKU information is limited. System will auto-generate SKUs.');
+    }
+    
+    if (products.length > 100) {
+        suggestions.push('Large import detected. Consider importing in smaller batches.');
+    }
+    
+    return suggestions;
+}
+
+function validateProductsForImport(products) {
+    const errors = [];
+    const validProducts = [];
+    
+    products.forEach((product, index) => {
+        const productErrors = [];
+        
+        // Validate required fields
+        if (!product.name || product.name.trim().length < 2) {
+            productErrors.push(`Product ${index + 1}: Name is required and must be at least 2 characters`);
+        }
+        
+        if (!product.sellingPrice || product.sellingPrice <= 0) {
+            productErrors.push(`Product ${index + 1}: Valid selling price is required`);
+        }
+        
+        if (product.currentStock < 0) {
+            productErrors.push(`Product ${index + 1}: Stock cannot be negative`);
+        }
+        
+        if (productErrors.length === 0) {
+            validProducts.push({
+                ...product,
+                name: product.name.trim(),
+                sku: product.sku || generateSKU(product.name),
+                minStockLevel: product.minStockLevel || 10,
+                isActive: true
+            });
+        } else {
+            errors.push(...productErrors);
+        }
+    });
+    
+    return { errors, validProducts };
+}
+
+function analyzeFieldQuality(products) {
+    if (products.length === 0) return {};
+    
+    const requiredFields = ['name', 'sellingPrice', 'currentStock'];
+    const optionalFields = ['sku', 'category', 'brand', 'description'];
+    
+    const quality = {};
+    
+    [...requiredFields, ...optionalFields].forEach(field => {
+        const filledCount = products.filter(p => p[field] && p[field] !== '').length;
+        const percentage = Math.round((filledCount / products.length) * 100);
+        
+        quality[field] = {
+            filled: filledCount,
+            total: products.length,
+            percentage,
+            status: percentage >= 90 ? 'excellent' : 
+                   percentage >= 70 ? 'good' : 
+                   percentage >= 50 ? 'fair' : 'poor'
+        };
+    });
+    
+    return quality;
+}
+
+function generateSKU(name) {
+    if (!name) return 'SKU' + Date.now();
+    
+    const cleaned = name.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    const timestamp = Date.now().toString().slice(-4);
+    return (cleaned.substring(0, 6) + timestamp).padEnd(10, '0');
+}
+
 module.exports = {
     // Core CRUD
     getDashboardStats,
@@ -1011,6 +1327,11 @@ module.exports = {
     
     // Bulk operations
     bulkImportProducts,
+    
+    // PDF Import operations
+    processPDFImport,
+    confirmPDFImport,
+    previewPDFExtraction,
     
     // Stock tracking
     trackStockMovement,

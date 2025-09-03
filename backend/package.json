@@ -19,11 +19,18 @@
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-session": "^1.18.2",
+    "jimp": "^1.6.0",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.17.0",
+    "multer": "^2.0.2",
+    "natural": "^8.1.0",
     "nodemon": "^3.1.10",
     "passport": "^0.7.0",
-    "passport-google-oauth20": "^2.0.0"
+    "passport-google-oauth20": "^2.0.0",
+    "pdf-parse": "^1.1.1",
+    "pdf2pic": "^2.1.4",
+    "sharp": "^0.34.3",
+    "tesseract.js": "^6.0.1"
   }
 }

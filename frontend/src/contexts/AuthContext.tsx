@@ -24,14 +24,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Check if user is logged in on app start
-    const checkAuth = () => {
+    const checkAuth = async () => {
       try {
         if (isAuthenticated()) {
-          const userData = getCurrentUser();
-          if (userData) {
-            setUser(userData);
-          } else {
-            // Invalid token or user data, clear auth
+          // Verify token with server
+          try {
+            const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/verify`, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+                'Content-Type': 'application/json',
+              },
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.user) {
+              setUser(data.user);
+            } else {
+              // Token is invalid, clear auth data
+              clearAuthData();
+            }
+          } catch (error) {
+            console.error('Token verification failed:', error);
             clearAuthData();
           }
         }

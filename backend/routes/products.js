@@ -16,6 +16,11 @@ const {
     // Bulk operations
     bulkImportProducts,
     
+    // PDF Import operations
+    processPDFImport,
+    confirmPDFImport,
+    previewPDFExtraction,
+    
     // Stock tracking
     trackStockMovement,
     
@@ -32,6 +37,7 @@ const {
 
 const { validateProduct } = require('../middleware/validation');
 const auth = require('../middleware/auth');
+const { uploadPDF, handleUploadError } = require('../middleware/uploadPDF');
 
 // =====================================================
 // MIDDLEWARE - All routes require authentication
@@ -125,6 +131,34 @@ router.post('/stock-movement', trackStockMovement);
 router.post('/bulk-import', bulkImportProducts);
 
 // =====================================================
+// PDF BULK IMPORT ROUTES
+// =====================================================
+
+/**
+ * POST /api/products/pdf-import/preview
+ * Purpose: Preview PDF extraction without importing
+ * Used by: PDF upload preview, extraction validation
+ * Body: FormData with pdfFile
+ */
+router.post('/pdf-import/preview', uploadPDF, handleUploadError, previewPDFExtraction);
+
+/**
+ * POST /api/products/pdf-import/process
+ * Purpose: Process PDF and extract product data for review
+ * Used by: PDF product extraction, bulk import preparation
+ * Body: FormData with pdfFile + supplier info
+ */
+router.post('/pdf-import/process', uploadPDF, handleUploadError, processPDFImport);
+
+/**
+ * POST /api/products/pdf-import/confirm
+ * Purpose: Confirm and import products after user review/editing
+ * Used by: Final step of PDF import process
+ * Body: { products: [], supplierInfo: {}, importOptions: {} }
+ */
+router.post('/pdf-import/confirm', confirmPDFImport);
+
+// =====================================================
 // SALES INTEGRATION ROUTES
 // =====================================================
 
@@ -168,7 +202,10 @@ router.get('/test/routes', (req, res) => {
                 'POST /stock-movement': 'Track stock movements (in/out)'
             },
             bulkOperations: {
-                'POST /bulk-import': 'Bulk import products from suppliers'
+                'POST /bulk-import': 'Bulk import products from suppliers',
+                'POST /pdf-import/preview': 'Preview PDF extraction without importing',
+                'POST /pdf-import/process': 'Process PDF and extract product data',
+                'POST /pdf-import/confirm': 'Confirm and import PDF extracted products'
             },
             salesIntegration: {
                 'POST /process-sale': 'Process sale and update stock automatically'
@@ -186,7 +223,8 @@ router.get('/test/routes', (req, res) => {
             getSupplierProducts: '/api/products/supplier/Apple%20Distributor',
             getPricing: '/api/products/64f7b8e8c5d4e1234567890a/pricing?customerType=wholesale&quantity=5',
             updateStock: 'POST /api/products/update-stock { "productId": "...", "quantity": 50, "operation": "add" }',
-            processSale: 'POST /api/products/process-sale { "products": [...], "customerInfo": {...} }'
+            processSale: 'POST /api/products/process-sale { "products": [...], "customerInfo": {...} }',
+            pdfImport: 'POST /api/products/pdf-import/process (FormData with pdfFile + supplier info)'
         }
     });
 });

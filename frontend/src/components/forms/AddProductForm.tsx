@@ -6,10 +6,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ToastContainer } from '@/components/ui/toast';
 import { apiService } from '@/lib/api';
 import { useToast } from '@/hooks/useToast';
 import type { CreateProductRequest, Category, Supplier } from '@/types/product';
+import PDFBulkImport from '@/components/inventory/PDFBulkImport';
 import { 
   Package, 
   DollarSign, 
@@ -18,7 +20,10 @@ import {
   BarChart3, 
   AlertTriangle,
   Save,
-  RefreshCw
+  RefreshCw,
+  FileText,
+  Upload,
+  CheckCircle
 } from 'lucide-react';
 
 interface AddProductFormProps {
@@ -28,6 +33,9 @@ interface AddProductFormProps {
 
 export default function AddProductForm({ onSuccess, onCancel }: AddProductFormProps) {
   const { toast, toasts, removeToast } = useToast();
+  
+  // PDF Import Modal State
+  const [isPDFImportOpen, setIsPDFImportOpen] = useState(false);
   
   const [formData, setFormData] = useState<CreateProductRequest>({
     name: '',
@@ -62,6 +70,10 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profitMargin, setProfitMargin] = useState(0);
+  
+  // PDF Upload state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isProcessingPDF, setIsProcessingPDF] = useState(false);
 
   // Add states for suggestions
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
@@ -77,7 +89,7 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
     sku: false
   });
   
-  // Refs for clicking outside detection
+  // Refs for suggestion dropdowns
   const nameInputRef = useRef<HTMLDivElement>(null);
   const brandInputRef = useRef<HTMLDivElement>(null);
   const skuInputRef = useRef<HTMLDivElement>(null);
@@ -141,24 +153,20 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
     }
   };
 
-  // Add console log to debug API response
   const fetchProductSuggestions = async () => {
     try {
       const response = await apiService.getProducts({ limit: 20 });
-      console.log('Product suggestions response:', response);
       if (response.success && response.data) {
-        const products = response.data;
+        const productsArray = Array.isArray(response.data) ? response.data : response.data.products || [];
         
-        // Extract unique product names and brands for suggestions
-        const names = Array.from(new Set(products.map((p: any) => p.name)));
-        const brands = Array.from(new Set(products.map((p: any) => p.brand).filter(Boolean)));
-        const skus = Array.from(new Set(products.map((p: any) => p.sku)));
+        // Extract unique values for suggestions
+        const names = Array.from(new Set(productsArray.map((p: any) => p.name).filter(Boolean))) as string[];
+        const brands = Array.from(new Set(productsArray.map((p: any) => p.brand).filter(Boolean))) as string[];
+        const skus = Array.from(new Set(productsArray.map((p: any) => p.sku).filter(Boolean))) as string[];
         
         setNameSuggestions(names);
         setBrandSuggestions(brands);
         setSkuSuggestions(skus);
-        
-        console.log('Loaded suggestions:', { names, brands, skus });
       }
     } catch (error) {
       console.error('Error fetching product suggestions:', error);
@@ -218,6 +226,107 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
   const handleSuggestionSelect = (field: string, value: string) => {
     handleInputChange(field, value);
     setShowSuggestions(prev => ({ ...prev, [field]: false }));
+  };
+
+  // PDF Import Success Handler
+  const handlePDFImportSuccess = () => {
+    setIsPDFImportOpen(false);
+    toast({
+      type: 'success',
+      title: 'PDF Import Completed!',
+      description: 'Products have been imported successfully.',
+      duration: 5000
+    });
+    // Refresh the form or redirect as needed
+    if (onSuccess) {
+      onSuccess({});
+    }
+  };
+
+  // Handle PDF file upload and processing
+  const handlePDFUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || file.type !== 'application/pdf') {
+      toast({
+        type: 'error',
+        title: 'Invalid File',
+        description: 'Please select a PDF file.',
+        duration: 3000
+      });
+      return;
+    }
+
+    setPdfFile(file);
+    setIsProcessingPDF(true);
+
+    try {
+      const token = localStorage.getItem('authToken');
+      console.log('Debug - Token exists:', !!token);
+      console.log('Debug - Token length:', token?.length);
+      console.log('Debug - Token preview:', token?.substring(0, 20) + '...');
+
+      const formData = new FormData();
+      formData.append('pdfFile', file);
+      formData.append('supplierName', 'PDF Import');
+      formData.append('defaultCategory', 'Imported');
+      formData.append('priceType', 'selling');
+
+      const response = await fetch('/api/products/pdf-import/preview', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+        },
+        body: formData
+      });
+
+      console.log('Debug - Response status:', response.status);
+      console.log('Debug - Response ok:', response.ok);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.log('Debug - Error response:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data.sampleProducts?.length > 0) {
+        const firstProduct = result.data.sampleProducts[0];
+        
+        // Auto-fill form with first product from PDF
+        if (firstProduct.name) {
+          setFormData(prev => ({
+            ...prev,
+            name: firstProduct.name,
+            description: firstProduct.description || '',
+            brand: firstProduct.brand || '',
+            costPrice: firstProduct.costPrice || 0,
+            sellingPrice: firstProduct.sellingPrice || 0,
+            stock: firstProduct.currentStock || 0,
+            category: firstProduct.category || 'Imported'
+          }));
+        }
+
+        toast({
+          type: 'success',
+          title: 'PDF Processed Successfully!',
+          description: `Found ${result.data.sampleProducts.length} products. Form filled with first product.`,
+          duration: 5000
+        });
+      } else {
+        throw new Error(result.message || 'Failed to extract products from PDF');
+      }
+    } catch (error) {
+      console.error('PDF processing error:', error);
+      toast({
+        type: 'error',
+        title: 'PDF Processing Failed',
+        description: error instanceof Error ? error.message : 'Failed to process PDF file.',
+        duration: 5000
+      });
+    } finally {
+      setIsProcessingPDF(false);
+    }
   };
 
   const filterSuggestions = (suggestions: string[], input: string) => {
@@ -315,9 +424,27 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center">
-            <Package className="h-6 w-6 mr-2" />
-            Add New Product
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Package className="h-6 w-6 mr-2" />
+              Add New Product
+            </div>
+            <div className="flex gap-2">
+              <Dialog open={isPDFImportOpen} onOpenChange={setIsPDFImportOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Import from PDF
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>PDF Bulk Import</DialogTitle>
+                  </DialogHeader>
+                  <PDFBulkImport onSuccess={handlePDFImportSuccess} />
+                </DialogContent>
+              </Dialog>
+            </div>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -329,39 +456,109 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Basic Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div ref={nameInputRef} className="relative">
-                <Label htmlFor="name" className="flex items-center">
-                  <Package className="h-4 w-4 mr-1" />
-                  Product Name *
-                </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="Enter product name"
-                  onFocus={() => setShowSuggestions(prev => ({ ...prev, name: true }))}
-                  required
+            {/* PDF Import Section - Prominent Position */}
+            <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <CardHeader>
+                <CardTitle className="flex items-center text-blue-800">
+                  <Upload className="h-5 w-5 mr-2" />
+                  Quick Import from PDF
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <input
+                  type="file"
+                  accept=".pdf"
+                  onChange={handlePDFUpload}
+                  className="hidden"
+                  id="pdf-upload-input"
+                  disabled={isProcessingPDF}
                 />
-                {showSuggestions.name && (
-                  <div className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-auto">
-                    {nameSuggestions.length > 0 ? (
-                      filterSuggestions(nameSuggestions, formData.name || '').map((suggestion, index) => (
-                                              <div 
-                                                key={index}
-                                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                                                onClick={() => handleSuggestionSelect('name', suggestion)}
-                                              >
-                                                {suggestion}
-                                              </div>
-                                            ))
+                
+                <Card 
+                  className="p-6 border-dashed border-2 border-blue-300 hover:border-blue-500 transition-colors cursor-pointer bg-white hover:bg-blue-50" 
+                  onClick={() => document.getElementById('pdf-upload-input')?.click()}
+                >
+                  <div className="text-center">
+                    {isProcessingPDF ? (
+                      <>
+                        <RefreshCw className="h-12 w-12 mx-auto text-blue-600 mb-3 animate-spin" />
+                        <p className="font-medium text-blue-700">Processing PDF...</p>
+                        <p className="text-sm text-blue-600 mt-1">Please wait while we extract product data</p>
+                      </>
+                    ) : pdfFile ? (
+                      <>
+                        <CheckCircle className="h-12 w-12 mx-auto text-green-600 mb-3" />
+                        <p className="font-medium text-green-700">PDF Processed Successfully!</p>
+                        <p className="text-sm text-green-600 mt-1">{pdfFile.name}</p>
+                        <p className="text-xs text-gray-600 mt-2">Form has been auto-filled with extracted data</p>
+                      </>
                     ) : (
-                      <div className="px-4 py-2 text-gray-500">No suggestions found</div>
+                      <>
+                        <Upload className="h-12 w-12 mx-auto text-blue-600 mb-3" />
+                        <p className="font-medium text-blue-700 text-lg">Click to Upload PDF</p>
+                        <p className="text-sm text-blue-600 mt-2">Automatically extract product information</p>
+                        <p className="text-xs text-gray-500 mt-2">Supported: Product catalogs, invoices, price lists</p>
+                      </>
                     )}
                   </div>
-                )}
-              </div>
+                </Card>
+                
+                <div className="mt-4 text-center">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPDFImportOpen(true)}
+                    className="border-blue-300 text-blue-600 hover:bg-blue-50"
+                  >
+                    <FileText className="h-4 w-4 mr-1" />
+                    Advanced PDF Import
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Basic Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Package className="h-5 w-5 mr-2" />
+                  Basic Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div ref={nameInputRef} className="relative">
+                    <Label htmlFor="name" className="flex items-center">
+                      <Package className="h-4 w-4 mr-1" />
+                      Product Name *
+                    </Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      placeholder="Enter product name"
+                      onFocus={() => setShowSuggestions(prev => ({ ...prev, name: true }))}
+                      required
+                    />
+                    {showSuggestions.name && (
+                      <div className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-auto">
+                        {nameSuggestions.length > 0 ? (
+                          filterSuggestions(nameSuggestions, formData.name || '').map((suggestion, index) => (
+                                                      <div 
+                                                        key={index}
+                                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                                                        onClick={() => handleSuggestionSelect('name', suggestion)}
+                                                      >
+                                                        {suggestion}
+                                                      </div>
+                                                    ))
+                        ) : (
+                          <div className="px-4 py-2 text-gray-500">No suggestions found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
 
               <div>
                 <Label htmlFor="category" className="flex items-center">
@@ -409,44 +606,47 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                   </div>
                 )}
               </div>
+            </div>
+              </CardContent>
+            </Card>
 
-              <div ref={skuInputRef} className="relative">
-                <Label htmlFor="sku" className="flex items-center">
-                  <Hash className="h-4 w-4 mr-1" />
-                  SKU *
-                </Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="sku"
-                      value={formData.sku}
-                      onChange={(e) => handleInputChange('sku', e.target.value)}
-                      placeholder="Enter SKU"
-                      onFocus={() => setShowSuggestions(prev => ({ ...prev, sku: true }))}
-                      required
-                    />
-                    {showSuggestions.sku && (
-                      <div className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-auto">
-                        {skuSuggestions.length > 0 ? (
-                          filterSuggestions(skuSuggestions, formData.sku || '').map((suggestion, index) => (
-                                                      <div 
-                                                        key={index}
-                                                        className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                                                        onClick={() => handleSuggestionSelect('sku', suggestion)}
-                                                      >
-                                                        {suggestion}
-                                                      </div>
-                                                    ))
-                        ) : (
-                          <div className="px-4 py-2 text-gray-500">No suggestions found</div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <Button type="button" onClick={generateSKU} variant="outline" size="sm">
-                    <RefreshCw className="h-4 w-4" />
-                  </Button>
+            {/* SKU Field */}
+            <div ref={skuInputRef} className="relative">
+              <Label htmlFor="sku" className="flex items-center">
+                <Hash className="h-4 w-4 mr-1" />
+                SKU *
+              </Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="sku"
+                    value={formData.sku}
+                    onChange={(e) => handleInputChange('sku', e.target.value)}
+                    placeholder="Enter SKU"
+                    onFocus={() => setShowSuggestions(prev => ({ ...prev, sku: true }))}
+                    required
+                  />
+                  {showSuggestions.sku && (
+                    <div className="absolute z-50 w-full mt-1 bg-white shadow-lg rounded-md border border-gray-200 max-h-60 overflow-auto">
+                      {skuSuggestions.length > 0 ? (
+                        filterSuggestions(skuSuggestions, formData.sku || '').map((suggestion, index) => (
+                          <div 
+                            key={index}
+                            className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                            onClick={() => handleSuggestionSelect('sku', suggestion)}
+                          >
+                            {suggestion}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="px-4 py-2 text-gray-500">No suggestions found</div>
+                      )}
+                    </div>
+                  )}
                 </div>
+                <Button type="button" onClick={generateSKU} variant="outline" size="sm">
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
@@ -639,34 +839,6 @@ export default function AddProductForm({ onSuccess, onCancel }: AddProductFormPr
                 </div>
               </CardContent>
             </Card>
-
-            {/* Tags */}
-            {/* <div>
-              <Label htmlFor="tags">Tags</Label>
-              <div className="flex gap-2 mb-2">
-                <Input
-                  id="tags"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  placeholder="Enter tag"
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                />
-                <Button type="button" onClick={addTag} variant="outline" size="sm">
-                  <Plus className="h-4 w-4" />
-                </Button>
-              </div> */}
-              {/* <div className="flex flex-wrap gap-2">
-                {formData.tags?.map((tag, index) => (
-                  <Badge key={index} variant="secondary">
-                    {tag}
-                    <X 
-                      className="h-3 w-3 ml-1 cursor-pointer" 
-                      onClick={() => removeTag(tag)}
-                    />
-                  </Badge>
-                ))}
-              </div>
-            </div> */}
 
             {/* Form Actions */}
             <div className="flex justify-end gap-4 pt-6">

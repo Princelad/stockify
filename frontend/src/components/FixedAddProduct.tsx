@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Package, AlertTriangle } from 'lucide-react';
+import { Package, AlertTriangle, Upload, CheckCircle, RefreshCw } from 'lucide-react';
 
 import { apiService } from '@/lib/api';
 
@@ -39,6 +39,10 @@ const FixedAddProduct: React.FC<FixedAddProductProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // PDF Upload state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isProcessingPDF, setIsProcessingPDF] = useState(false);
 
   // Handle form changes
   const handleChange = (field: string, value: any) => {
@@ -65,6 +69,98 @@ const FixedAddProduct: React.FC<FixedAddProductProps> = ({
       formData.name.substring(0, 3).toUpperCase().replace(/\s/g, '') : 'PRD';
     const timestamp = Date.now().toString().slice(-4);
     return `${categoryCode}-${nameCode}-${timestamp}`;
+  };
+
+  // Handle PDF file upload and processing
+  const handlePDFUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || file.type !== 'application/pdf') {
+      setError('Please select a valid PDF file.');
+      return;
+    }
+
+    setPdfFile(file);
+    setIsProcessingPDF(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem('authToken');
+      console.log('Debug - Auth token exists:', !!token);
+      
+      if (!token) {
+        throw new Error('No authentication token found. Please log in again.');
+      }
+
+      const formDataPDF = new FormData();
+      formDataPDF.append('pdfFile', file);
+      formDataPDF.append('supplierName', 'PDF Import');
+      formDataPDF.append('defaultCategory', 'Imported');
+      formDataPDF.append('priceType', 'selling');
+
+      const response = await fetch('/api/products/pdf-import/preview', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formDataPDF
+      });
+
+      console.log('Debug - Response status:', response.status);
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+          throw new Error('Session expired. Please log in again.');
+        }
+        const errorData = await response.text();
+        console.log('Debug - Error response:', errorData);
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (result.success && result.data.sampleProducts?.length > 0) {
+        const firstProduct = result.data.sampleProducts[0];
+        
+        // Auto-fill form with first product from PDF
+        if (firstProduct.name) {
+          setFormData(prev => ({
+            ...prev,
+            name: firstProduct.name,
+            description: firstProduct.description || '',
+            brand: firstProduct.brand || '',
+            category: firstProduct.category || 'Imported',
+            costPrice: firstProduct.costPrice || 0,
+            sellingPrice: firstProduct.sellingPrice || 0,
+            currentStock: firstProduct.currentStock || 0,
+            sku: firstProduct.sku || generateSKU()
+          }));
+        }
+
+        alert(`PDF processed successfully! Found ${result.data.sampleProducts.length} products. Form auto-filled with first product.`);
+      } else {
+        throw new Error(result.message || 'Failed to extract products from PDF');
+      }
+    } catch (error) {
+      console.error('PDF processing error:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('log in again') || error.message.includes('Session expired')) {
+          setError('Your session has expired. Please refresh the page and log in again.');
+          // Optionally redirect to login
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 3000);
+        } else {
+          setError(error.message);
+        }
+      } else {
+        setError('Failed to process PDF file. Please try again.');
+      }
+    } finally {
+      setIsProcessingPDF(false);
+    }
   };
 
   // Form validation
@@ -137,6 +233,55 @@ const FixedAddProduct: React.FC<FixedAddProductProps> = ({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         )}
+
+        {/* PDF Import Section */}
+        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardHeader>
+            <CardTitle className="flex items-center text-blue-800">
+              <Upload className="h-5 w-5 mr-2" />
+              Quick Import from PDF
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handlePDFUpload}
+              className="hidden"
+              id="pdf-upload-input"
+              disabled={isProcessingPDF}
+            />
+            
+            <Card 
+              className="p-6 border-dashed border-2 border-blue-300 hover:border-blue-500 transition-colors cursor-pointer bg-white hover:bg-blue-50" 
+              onClick={() => document.getElementById('pdf-upload-input')?.click()}
+            >
+              <div className="text-center">
+                {isProcessingPDF ? (
+                  <>
+                    <RefreshCw className="h-12 w-12 mx-auto text-blue-600 mb-3 animate-spin" />
+                    <p className="font-medium text-blue-700">Processing PDF...</p>
+                    <p className="text-sm text-blue-600 mt-1">Please wait while we extract product data</p>
+                  </>
+                ) : pdfFile ? (
+                  <>
+                    <CheckCircle className="h-12 w-12 mx-auto text-green-600 mb-3" />
+                    <p className="font-medium text-green-700">PDF Processed Successfully!</p>
+                    <p className="text-sm text-green-600 mt-1">{pdfFile.name}</p>
+                    <p className="text-xs text-gray-600 mt-2">Form has been auto-filled with extracted data</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-12 w-12 mx-auto text-blue-600 mb-3" />
+                    <p className="font-medium text-blue-700 text-lg">Click to Upload PDF</p>
+                    <p className="text-sm text-blue-600 mt-2">Automatically extract product information</p>
+                    <p className="text-xs text-gray-500 mt-2">Supported: Product catalogs, invoices, price lists</p>
+                  </>
+                )}
+              </div>
+            </Card>
+          </CardContent>
+        </Card>
 
         {/* Basic Information */}
         <Card>
