@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { AppNavbar } from '@/components/AppNavbar';
+import { Sidebar } from '@/components/inventory/Sidebar';
+import { Topbar } from '@/components/inventory/Topbar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -166,26 +167,29 @@ export default function Categories() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <AppNavbar currentPage="categories" />
-        <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-              <p className="text-gray-600">Loading categories...</p>
+      <div className="flex min-h-screen bg-gray-50">
+        <Sidebar activeSection="Categories" />
+        <div className="flex-1 flex flex-col">
+          <Topbar />
+          <main className="flex-1 p-8">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                <p className="text-gray-600">Loading categories...</p>
+              </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <AppNavbar currentPage="categories" />
-      
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+    <div className="flex min-h-screen bg-gray-50">
+      <Sidebar activeSection="Categories" />
+      <div className="flex-1 flex flex-col">
+        <Topbar />
+        <main className="flex-1 p-8">
           {/* Error Alert */}
           {error && (
             <Alert variant="destructive" className="mb-6">
@@ -489,8 +493,8 @@ export default function Categories() {
               </CardContent>
             </Card>
           )}
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }
