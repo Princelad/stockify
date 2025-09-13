@@ -1,23 +1,19 @@
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
+import { InventoryLayout } from '@/layouts';
 import { SummaryCards } from '@/components/inventory/SummaryCards';
 import { LowStockAlert } from '@/components/inventory/LowStockAlert';
 import { Home, TrendingUp, Package, Users } from 'lucide-react';
 
 export default function Dashboard() {
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeSection="Dashboard" />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8 flex flex-col gap-6">
-          {/* Welcome Header */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <Home className="h-6 w-6 text-blue-600" />
-                  Dashboard
+    <InventoryLayout activeSection="Dashboard">
+      <div className="p-8 flex flex-col gap-6">
+        {/* Welcome Header */}
+        <div className="bg-white rounded-xl shadow-sm p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <Home className="h-6 w-6 text-blue-600" />
+                Dashboard
                 </h1>
                 <p className="text-gray-600 mt-1">Welcome back! Here's what's happening with your business.</p>
               </div>
@@ -139,8 +135,7 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </main>
       </div>
-    </div>
+    </InventoryLayout>
   );
 }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { InventoryLayout } from '@/layouts';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,8 +10,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
 import { apiService } from '@/lib/api';
 import {
   User,
@@ -167,11 +166,8 @@ export default function Profile() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeSection="Profile" />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8">
+    <InventoryLayout activeSection="Profile">
+      <div className="p-8">
           <div className="max-w-4xl mx-auto space-y-8">
             
             {/* Header */}
@@ -439,9 +435,8 @@ export default function Profile() {
               </div>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+    </InventoryLayout>
   );
 }
 

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
+import { InventoryLayout } from '@/layouts';
 import { FileText, Plus, Search, ShoppingCart, Trash2, Calculator, User, CreditCard, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,19 +110,16 @@ export default function Billing() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeSection="Billing" />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8">
-          {/* Header */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <FileText className="h-6 w-6 text-blue-600" />
-                  Billing & Sales
-                </h1>
+    <InventoryLayout activeSection="Billing">
+      <div className="p-8">
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <FileText className="h-6 w-6 text-blue-600" />
+                Billing & Sales
+              </h1>
                 <p className="text-gray-600 mt-1">Create bills and process sales transactions</p>
               </div>
               <div className="flex gap-2">
@@ -370,8 +366,7 @@ export default function Billing() {
               )}
             </div>
           </div>
-        </main>
       </div>
-    </div>
+    </InventoryLayout>
   );
 }

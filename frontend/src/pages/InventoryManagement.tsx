@@ -1,6 +1,5 @@
+import { InventoryLayout } from '@/layouts';
 
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
 import { SummaryCards } from '@/components/inventory/SummaryCards';
 import { LowStockAlert } from '@/components/inventory/LowStockAlert';
 import { ProductTable } from '@/components/inventory/ProductTable';
@@ -37,8 +36,7 @@ export default function InventoryManagement() {
           
           {/* Product Table */}
           <ProductTable />
-        </main>
-      </div>
-    </div>
+        </div>
+    </InventoryLayout>
   );
 }

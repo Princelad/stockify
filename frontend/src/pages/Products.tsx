@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
+import { InventoryLayout } from '@/layouts';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -252,32 +251,25 @@ export default function Products() {
 
   if (loading && products.length === 0) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar activeSection="Products" />
-        <div className="flex-1 flex flex-col">
-          <Topbar />
-          <main className="flex-1 p-8">
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          </main>
+      <InventoryLayout activeSection="Products">
+        <div className="p-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
         </div>
-      </div>
+      </InventoryLayout>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeSection="Products" />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8">
-          {error && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+    <InventoryLayout activeSection="Products">
+      <div className="p-8">
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
           {/* Header */}
           <div className="mb-6">
@@ -691,7 +683,6 @@ export default function Products() {
               </div>
             </div>
           )}
-        </main>
       </div>
 
       {/* Add Product Modal */}
@@ -715,7 +706,7 @@ export default function Products() {
           onClose={() => setSelectedProduct(null)}
         />
       )}
-    </div>
+    </InventoryLayout>
   );
 }
 
