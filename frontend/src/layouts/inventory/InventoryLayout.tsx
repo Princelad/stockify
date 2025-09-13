@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Home, 
@@ -15,7 +15,14 @@ import {
   Bell,
   Search,
   Store,
-  LogOut
+  LogOut,
+  Menu,
+  X,
+  ShoppingCart,
+  UserPlus,
+  PackagePlus,
+  Receipt,
+  Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getCurrentUser, clearAuthData } from '@/lib/api';
@@ -28,6 +35,14 @@ interface NavItem {
     label: string;
     route: string;
   }>;
+}
+
+interface QuickAction {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  route: string;
+  color: string;
+  description: string;
 }
 
 interface InventoryLayoutProps {
@@ -70,8 +85,45 @@ const navItems: NavItem[] = [
   { label: 'Settings', icon: Settings, route: '/settings' },
 ];
 
+const quickActions: QuickAction[] = [
+  { 
+    label: 'Add Product', 
+    icon: PackagePlus, 
+    route: '/products?action=add', 
+    color: 'bg-green-500 hover:bg-green-600',
+    description: 'Quickly add new product to inventory'
+  },
+  { 
+    label: 'New Sale', 
+    icon: ShoppingCart, 
+    route: '/billing', 
+    color: 'bg-blue-500 hover:bg-blue-600',
+    description: 'Create new invoice or sale'
+  },
+  { 
+    label: 'Add Customer', 
+    icon: UserPlus, 
+    route: '/customers?action=add', 
+    color: 'bg-purple-500 hover:bg-purple-600',
+    description: 'Add new customer to database'
+  },
+  { 
+    label: 'Quick Report', 
+    icon: Receipt, 
+    route: '/reports', 
+    color: 'bg-orange-500 hover:bg-orange-600',
+    description: 'Generate sales or inventory report'
+  },
+];
+
 // Internal Sidebar Component
-const Sidebar: React.FC<{ activeSection: string }> = ({ activeSection }) => {
+const Sidebar: React.FC<{ 
+  activeSection: string; 
+  isCollapsed: boolean;
+  isHoverExpanded: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}> = ({ activeSection, isCollapsed, isHoverExpanded, onMouseEnter, onMouseLeave }) => {
   const navigate = useNavigate();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   
@@ -104,10 +156,26 @@ const Sidebar: React.FC<{ activeSection: string }> = ({ activeSection }) => {
 
   const isExpanded = (itemLabel: string) => expandedItems.includes(itemLabel);
 
+  // Determine if sidebar should show expanded content (either manually expanded or hover expanded)
+  const shouldShowExpandedContent = !isCollapsed || isHoverExpanded;
+  const sidebarWidth = shouldShowExpandedContent ? "w-64" : "w-16";
+  const sidebarPadding = shouldShowExpandedContent ? "px-4" : "px-2";
+
   return (
-    <aside className="h-screen w-64 bg-white border-r flex flex-col py-6 px-4 shadow-sm">
-      <div className="text-2xl font-bold mb-8 tracking-tight text-gray-800 hover:text-blue-600 transition-colors duration-200">
-        Stockify
+    <aside 
+      className={cn(
+        "h-screen bg-white border-r flex flex-col py-6 shadow-sm transition-all duration-300 ease-in-out",
+        "fixed lg:relative z-50 lg:z-auto",
+        isCollapsed ? `${sidebarWidth} ${sidebarPadding} -translate-x-full lg:translate-x-0` : `${sidebarWidth} ${sidebarPadding} translate-x-0`
+      )}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
+      <div className={cn(
+        "font-bold mb-8 tracking-tight text-gray-800 hover:text-blue-600 transition-colors duration-200",
+        shouldShowExpandedContent ? "text-2xl" : "text-lg text-center"
+      )}>
+        {shouldShowExpandedContent ? "Stockify" : "S"}
       </div>
       <nav className="flex-1 space-y-2">
         {navItems.map((item) => (
@@ -117,7 +185,8 @@ const Sidebar: React.FC<{ activeSection: string }> = ({ activeSection }) => {
                 'flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
                 activeSection === item.label 
                   ? 'bg-blue-50 text-blue-700 font-semibold' 
-                  : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600'
+                  : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600',
+                !shouldShowExpandedContent && 'justify-center'
               )}
               onClick={() => {
                 if (item.children) {
@@ -126,19 +195,24 @@ const Sidebar: React.FC<{ activeSection: string }> = ({ activeSection }) => {
                   handleNavigation(item.route);
                 }
               }}
+              title={!shouldShowExpandedContent ? item.label : undefined}
             >
               <item.icon className="h-5 w-5" />
-              <span className="flex-1">{item.label}</span>
-              {item.children && (
-                <div className="transition-transform duration-200">
-                  {isExpanded(item.label) ? 
-                    <ChevronDown className="h-4 w-4" /> : 
-                    <ChevronRight className="h-4 w-4" />
-                  }
-                </div>
+              {shouldShowExpandedContent && (
+                <>
+                  <span className="flex-1">{item.label}</span>
+                  {item.children && (
+                    <div className="transition-transform duration-200">
+                      {isExpanded(item.label) ? 
+                        <ChevronDown className="h-4 w-4" /> : 
+                        <ChevronRight className="h-4 w-4" />
+                      }
+                    </div>
+                  )}
+                </>
               )}
             </div>
-            {item.children && (
+            {shouldShowExpandedContent && item.children && (
               <div className={cn(
                 "ml-8 overflow-hidden transition-all duration-300 ease-in-out",
                 isExpanded(item.label) 
@@ -161,12 +235,62 @@ const Sidebar: React.FC<{ activeSection: string }> = ({ activeSection }) => {
           </div>
         ))}
       </nav>
+      
+      {/* Quick Actions Section */}
+      {shouldShowExpandedContent && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="flex items-center gap-2 px-3 mb-4">
+            <Zap className="h-4 w-4 text-gray-500" />
+            <span className="text-sm font-semibold text-gray-700">Quick Actions</span>
+          </div>
+          <div className="space-y-2">
+            {quickActions.map((action) => (
+              <button
+                key={action.label}
+                onClick={() => handleNavigation(action.route)}
+                className={cn(
+                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-sm',
+                  action.color
+                )}
+                title={action.description}
+              >
+                <action.icon className="h-4 w-4" />
+                <span className="flex-1 text-left">{action.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      
+      {/* Quick Actions - Collapsed State */}
+      {!shouldShowExpandedContent && (
+        <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="space-y-2">
+            {quickActions.map((action) => (
+              <button
+                key={action.label}
+                onClick={() => handleNavigation(action.route)}
+                className={cn(
+                  'w-full flex items-center justify-center p-2 rounded-lg text-white transition-all duration-200 transform hover:scale-105 hover:shadow-sm',
+                  action.color
+                )}
+                title={`${action.label} - ${action.description}`}
+              >
+                <action.icon className="h-4 w-4" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </aside>
   );
 };
 
 // Internal Topbar Component
-const Topbar: React.FC = () => {
+const Topbar: React.FC<{ onSidebarToggle: () => void; isCollapsed: boolean }> = ({ 
+  onSidebarToggle, 
+  isCollapsed 
+}) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState<boolean>(false);
   const user = getCurrentUser() as User | null;
 
@@ -190,6 +314,28 @@ const Topbar: React.FC = () => {
   return (
     <header className="flex items-center justify-between px-8 py-4 bg-white border-b shadow-sm">
       <div className="flex items-center gap-4 w-1/2">
+        {/* Hamburger Menu Button */}
+        <button
+          onClick={onSidebarToggle}
+          className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 lg:hidden"
+          aria-label="Toggle sidebar"
+        >
+          {isCollapsed ? (
+            <Menu className="h-5 w-5 text-gray-600" />
+          ) : (
+            <X className="h-5 w-5 text-gray-600" />
+          )}
+        </button>
+        
+        {/* Desktop hamburger (always visible) */}
+        <button
+          onClick={onSidebarToggle}
+          className="hidden lg:block p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+          aria-label="Toggle sidebar"
+        >
+          <Menu className="h-5 w-5 text-gray-600" />
+        </button>
+        
         <Store className="h-6 w-6 text-blue-600" />
         <span className="font-semibold text-lg">Stockify Store</span>
         <div className="flex-1 relative">
@@ -283,21 +429,168 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
   children,
   activeSection = 'Dashboard',
 }) => {
+  const navigate = useNavigate();
+  
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    // Check localStorage for saved preference, fallback to mobile detection
+    const savedPreference = localStorage.getItem('sidebar-collapsed');
+    if (savedPreference !== null) {
+      return JSON.parse(savedPreference);
+    }
+    // Check if screen is mobile on initial load
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    return isMobile;
+  });
+
+  const [isHoverExpanded, setIsHoverExpanded] = useState<boolean>(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMobileRef = useRef<boolean>(false);
+
+  // Check if device is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      isMobileRef.current = window.innerWidth < 1024;
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Toggle sidebar collapse state
+  const toggleSidebar = useCallback(() => {
+    setIsCollapsed(prev => {
+      const newState = !prev;
+      // Save preference to localStorage
+      localStorage.setItem('sidebar-collapsed', JSON.stringify(newState));
+      // Clear hover state when manually toggling
+      setIsHoverExpanded(false);
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+      return newState;
+    });
+  }, []);
+
+  // Handle sidebar hover to expand
+  const handleSidebarMouseEnter = useCallback(() => {
+    // Only enable hover expansion on desktop and when sidebar is collapsed
+    if (isMobileRef.current || !isCollapsed) return;
+
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    // Set timeout to expand after delay
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHoverExpanded(true);
+    }, 300); // 300ms delay
+  }, [isCollapsed]);
+
+  // Handle sidebar hover leave
+  const handleSidebarMouseLeave = useCallback(() => {
+    // Only on desktop
+    if (isMobileRef.current) return;
+
+    // Clear expand timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    // Set timeout to collapse after delay
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHoverExpanded(false);
+    }, 200); // Shorter delay for collapse
+  }, []);
+
+  // Clear timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Handle navigation for quick actions
+  const handleNavigation = useCallback((route: string) => {
+    navigate(route);
+  }, [navigate]);
+
+  // Handle responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      const isMobile = window.innerWidth < 1024;
+      if (isMobile) {
+        setIsCollapsed(true);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <Sidebar activeSection={activeSection} />
+      <Sidebar 
+        activeSection={activeSection} 
+        isCollapsed={isCollapsed}
+        isHoverExpanded={isHoverExpanded}
+        onMouseEnter={handleSidebarMouseEnter}
+        onMouseLeave={handleSidebarMouseLeave}
+      />
       
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      <div className={cn(
+        "flex-1 flex flex-col transition-all duration-300 ease-in-out",
+        // Adjust margin for desktop collapsed sidebar
+        "lg:ml-0",
+        !isCollapsed && "lg:ml-0" // Sidebar is already in flow on desktop
+      )}>
         {/* Top Navigation */}
-        <Topbar />
+        <Topbar 
+          onSidebarToggle={toggleSidebar}
+          isCollapsed={isCollapsed}
+        />
         
         {/* Page Content */}
         <main className="flex-1 overflow-auto">
           {children}
         </main>
       </div>
+      
+      {/* Mobile overlay when sidebar is expanded */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={toggleSidebar}
+          aria-hidden="true"
+        />
+      )}
+      
+      {/* Mobile Quick Action FAB */}
+      {isCollapsed && (
+        <div className="fixed bottom-6 right-6 lg:hidden z-30">
+          <div className="relative">
+            <button
+              onClick={() => setIsCollapsed(false)}
+              className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+              aria-label="Quick Actions"
+            >
+              <Zap className="h-6 w-6" />
+            </button>
+            {/* Quick access to most important action */}
+            <button
+              onClick={() => handleNavigation('/billing')}
+              className="absolute -top-16 right-0 w-12 h-12 bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center"
+              title="New Sale"
+            >
+              <ShoppingCart className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
