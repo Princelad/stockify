@@ -6,7 +6,7 @@ const saleSchema = new mongoose.Schema(
     customer: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Customer",
-      required: true,
+      required: false, // Allow sales without customer (walk-in customers)
     },
     items: [
       {
@@ -21,10 +21,10 @@ const saleSchema = new mongoose.Schema(
         total: { type: Number, required: true, min: 0 },
       },
     ],
-    subtotal: { type: Number, required: true, min: 0 },
+    subtotal: { type: Number, default: 0, min: 0 },
     discountPercentage: { type: Number, default: 0, min: 0, max: 100 },
     discountAmount: { type: Number, default: 0, min: 0 },
-    totalAmount: { type: Number, required: true, min: 0 },
+    totalAmount: { type: Number, default: 0, min: 0 },
     paymentMethod: {
       type: String,
       enum: ["cash", "card", "upi", "netbanking", "credit"],
@@ -57,7 +57,7 @@ saleSchema.pre("save", async function (next) {
 
     let sequence = 1;
     if (lastInvoice) {
-      const lastSequence = parseInt(lastInvoice.invoiceNumber.split("-")[2]);
+      const lastSequence = parseInt(lastInvoice.invoiceNumber.split("-")[3]); // Fix: should be index 3, not 2
       sequence = lastSequence + 1;
     }
 

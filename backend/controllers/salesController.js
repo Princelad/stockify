@@ -181,13 +181,19 @@ const createSale = async (req, res) => {
     }
 
     // Create the sale
-    const sale = new Sale({
-      customer: customerId || null,
+    const saleData = {
       items: processedItems,
       discountPercentage,
       paymentMethod,
       paymentStatus,
-    });
+    };
+
+    // Only add customer if customerId is provided
+    if (customerId) {
+      saleData.customer = customerId;
+    }
+
+    const sale = new Sale(saleData);
 
     await sale.save({ session });
 
