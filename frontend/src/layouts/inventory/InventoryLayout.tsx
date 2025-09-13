@@ -158,13 +158,14 @@ const Sidebar: React.FC<{
 
   // Determine if sidebar should show expanded content (either manually expanded or hover expanded)
   const shouldShowExpandedContent = !isCollapsed || isHoverExpanded;
+  const shouldShowText = shouldShowExpandedContent; // Show text immediately when expanding
   const sidebarWidth = shouldShowExpandedContent ? "w-64" : "w-16";
   const sidebarPadding = shouldShowExpandedContent ? "px-4" : "px-2";
 
   return (
     <aside 
       className={cn(
-        "h-screen bg-white border-r flex flex-col py-6 shadow-sm transition-all duration-300 ease-in-out",
+        "h-screen bg-white border-r flex flex-col py-6 shadow-sm transition-all duration-300 ease-in-out overflow-hidden",
         "fixed lg:relative z-50 lg:z-auto",
         isCollapsed ? `${sidebarWidth} ${sidebarPadding} -translate-x-full lg:translate-x-0` : `${sidebarWidth} ${sidebarPadding} translate-x-0`
       )}
@@ -172,21 +173,73 @@ const Sidebar: React.FC<{
       onMouseLeave={onMouseLeave}
     >
       <div className={cn(
-        "font-bold mb-8 tracking-tight text-gray-800 hover:text-blue-600 transition-colors duration-200",
+        "font-bold mb-8 tracking-tight text-gray-800 hover:text-blue-600 transition-colors duration-200 flex items-center justify-center min-h-[32px]",
         shouldShowExpandedContent ? "text-2xl" : "text-lg text-center"
       )}>
-        {shouldShowExpandedContent ? "Stockify" : "S"}
+        {shouldShowText ? (
+          "Stockify"
+        ) : (
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 rounded-lg flex items-center justify-center shadow-lg transition-all duration-200 cursor-pointer transform hover:scale-105">
+            <svg 
+              width="18" 
+              height="18" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              className="text-white drop-shadow-sm"
+            >
+              {/* 3D Cube with isometric perspective */}
+              {/* Top face */}
+              <path 
+                d="M12 2L20 6L12 10L4 6L12 2Z" 
+                fill="currentColor" 
+                fillOpacity="1"
+              />
+              {/* Left face */}
+              <path 
+                d="M4 6V18L12 22V10L4 6Z" 
+                fill="currentColor" 
+                fillOpacity="0.7"
+              />
+              {/* Right face */}
+              <path 
+                d="M12 10V22L20 18V6L12 10Z" 
+                fill="currentColor" 
+                fillOpacity="0.8"
+              />
+              {/* Edge highlights for 3D effect */}
+              <path 
+                d="M12 2L20 6L12 10L4 6L12 2Z" 
+                stroke="currentColor" 
+                strokeWidth="0.5" 
+                strokeOpacity="0.3"
+                fill="none"
+              />
+              <path 
+                d="M4 6L12 10V22" 
+                stroke="currentColor" 
+                strokeWidth="0.5" 
+                strokeOpacity="0.3"
+              />
+              <path 
+                d="M20 6L12 10V22" 
+                stroke="currentColor" 
+                strokeWidth="0.5" 
+                strokeOpacity="0.3"
+              />
+            </svg>
+          </div>
+        )}
       </div>
       <nav className="flex-1 space-y-2">
         {navItems.map((item) => (
           <div key={item.label}>
             <div
               className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
+                'flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 min-h-[40px]',
                 activeSection === item.label 
                   ? 'bg-blue-50 text-blue-700 font-semibold' 
                   : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600',
-                !shouldShowExpandedContent && 'justify-center'
+                !shouldShowText && 'justify-center'
               )}
               onClick={() => {
                 if (item.children) {
@@ -195,14 +248,14 @@ const Sidebar: React.FC<{
                   handleNavigation(item.route);
                 }
               }}
-              title={!shouldShowExpandedContent ? item.label : undefined}
+              title={!shouldShowText ? item.label : undefined}
             >
-              <item.icon className="h-5 w-5" />
-              {shouldShowExpandedContent && (
+              <item.icon className="h-5 w-5 flex-shrink-0" />
+              {shouldShowText && (
                 <>
-                  <span className="flex-1">{item.label}</span>
+                  <span className="flex-1 whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200">{item.label}</span>
                   {item.children && (
-                    <div className="transition-transform duration-200">
+                    <div className="transition-transform duration-200 flex-shrink-0">
                       {isExpanded(item.label) ? 
                         <ChevronDown className="h-4 w-4" /> : 
                         <ChevronRight className="h-4 w-4" />
@@ -212,7 +265,7 @@ const Sidebar: React.FC<{
                 </>
               )}
             </div>
-            {shouldShowExpandedContent && item.children && (
+            {shouldShowText && item.children && (
               <div className={cn(
                 "ml-8 overflow-hidden transition-all duration-300 ease-in-out",
                 isExpanded(item.label) 
@@ -223,7 +276,7 @@ const Sidebar: React.FC<{
                   {item.children.map((child) => (
                     <div 
                       key={child.label} 
-                      className="text-gray-500 text-sm px-2 py-1 rounded hover:bg-blue-50 cursor-pointer transition-all duration-150 hover:text-blue-600 hover:translate-x-1"
+                      className="text-gray-500 text-sm px-2 py-1 rounded hover:bg-blue-50 cursor-pointer transition-all duration-150 hover:text-blue-600 hover:translate-x-1 whitespace-nowrap overflow-hidden text-ellipsis"
                       onClick={() => handleNavigation(child.route)}
                     >
                       {child.label}
@@ -239,30 +292,35 @@ const Sidebar: React.FC<{
       {/* Quick Actions Section */}
       {shouldShowExpandedContent && (
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <div className="flex items-center gap-2 px-3 mb-4">
-            <Zap className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-semibold text-gray-700">Quick Actions</span>
-          </div>
+          {shouldShowText && (
+            <div className="flex items-center gap-2 px-3 mb-4">
+              <Zap className="h-4 w-4 text-gray-500 flex-shrink-0" />
+              <span className="text-sm font-semibold text-gray-700 whitespace-nowrap overflow-hidden text-ellipsis">Quick Actions</span>
+            </div>
+          )}
           <div className="space-y-2">
             {quickActions.map((action) => (
               <button
                 key={action.label}
                 onClick={() => handleNavigation(action.route)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-sm',
+                  'w-full flex items-center rounded-lg text-white text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-sm min-h-[40px]',
+                  shouldShowText ? 'gap-3 px-3 py-2' : 'justify-center p-2',
                   action.color
                 )}
-                title={action.description}
+                title={shouldShowText ? action.description : `${action.label} - ${action.description}`}
               >
-                <action.icon className="h-4 w-4" />
-                <span className="flex-1 text-left">{action.label}</span>
+                <action.icon className="h-4 w-4 flex-shrink-0" />
+                {shouldShowText && (
+                  <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis transition-opacity duration-200">{action.label}</span>
+                )}
               </button>
             ))}
           </div>
         </div>
       )}
       
-      {/* Quick Actions - Collapsed State */}
+      {/* Quick Actions - Fully Collapsed State */}
       {!shouldShowExpandedContent && (
         <div className="mt-6 pt-6 border-t border-gray-200">
           <div className="space-y-2">
@@ -271,7 +329,7 @@ const Sidebar: React.FC<{
                 key={action.label}
                 onClick={() => handleNavigation(action.route)}
                 className={cn(
-                  'w-full flex items-center justify-center p-2 rounded-lg text-white transition-all duration-200 transform hover:scale-105 hover:shadow-sm',
+                  'w-full flex items-center justify-center p-2 rounded-lg text-white transition-all duration-200 transform hover:scale-105 hover:shadow-sm min-h-[40px]',
                   action.color
                 )}
                 title={`${action.label} - ${action.description}`}
@@ -531,7 +589,7 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
   }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="h-screen overflow-hidden bg-gray-50 flex">
       {/* Sidebar */}
       <Sidebar 
         activeSection={activeSection} 
@@ -543,7 +601,7 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
       
       {/* Main Content Area */}
       <div className={cn(
-        "flex-1 flex flex-col transition-all duration-300 ease-in-out",
+        "flex-1 flex flex-col transition-all duration-300 ease-in-out h-screen",
         // Adjust margin for desktop collapsed sidebar
         "lg:ml-0",
         !isCollapsed && "lg:ml-0" // Sidebar is already in flow on desktop
