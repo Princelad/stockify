@@ -96,7 +96,7 @@ const FixedAddProduct: React.FC<FixedAddProductProps> = ({
       formDataPDF.append('supplierName', 'PDF Import');
       formDataPDF.append('defaultCategory', 'Imported');
       formDataPDF.append('priceType', 'selling');
-
+      
       const response = await fetch('/api/products/pdf-import/preview', {
         method: 'POST',
         headers: {

@@ -115,6 +115,10 @@ productSchema.virtual('isOutOfStock').get(function () {
 });
 
 // Index for better search performance
-productSchema.index({ name: 'text', sku: 'text', category: 'text' });
+productSchema.index({ name: 1 });
+productSchema.index({ sku: 1 }, { unique: true });
+productSchema.index({ category: 1 });
+productSchema.index({ 'supplier.name': 1 });
+productSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Product', productSchema);
