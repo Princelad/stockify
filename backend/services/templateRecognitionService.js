@@ -204,7 +204,6 @@ class TemplateRecognitionService {
      * Amazon Invoice specific extraction
      */
     async extractAmazonFormat(text, options) {
-        console.log('Applying Amazon invoice template...');
         
         const products = [];
         const lines = text.split('\n');
@@ -273,7 +272,6 @@ class TemplateRecognitionService {
      * Flipkart Invoice specific extraction
      */
     async extractFlipkartFormat(text, options) {
-        console.log('Applying Flipkart invoice template...');
         
         const products = [];
         const itemBlocks = text.split(/(?=\d+\.\s)/); // Split by item numbers
@@ -322,7 +320,6 @@ class TemplateRecognitionService {
      * Optimized catalog extraction
      */
     async extractCatalogOptimized(text, options) {
-        console.log('Applying optimized catalog template...');
         
         const products = [];
         const sections = this.smartSectionSplit(text);
@@ -428,7 +425,6 @@ class TemplateRecognitionService {
      * Wholesale price list optimized extraction
      */
     async extractWholesaleOptimized(text, options) {
-        console.log('Applying wholesale price list template...');
         
         // Wholesale lists often have better structure
         return await this.extractTableWithFallback(text, {
@@ -542,7 +538,6 @@ class TemplateRecognitionService {
 
     // Additional extraction methods for other templates...
     async extractInventoryOptimized(text, options) {
-        console.log('Applying inventory report template...');
         return await this.extractTableWithFallback(text, {
             quantityColumn: ['current stock', 'available', 'on hand', 'inventory'],
             priceColumn: ['unit cost', 'value', 'cost price']
@@ -550,7 +545,6 @@ class TemplateRecognitionService {
     }
 
     async extractQuotationOptimized(text, options) {
-        console.log('Applying quotation template...');
         return await this.extractTableWithFallback(text, {
             priceColumn: ['unit price', 'rate', 'quoted price'],
             quantityColumn: ['quantity', 'qty requested']
@@ -558,7 +552,6 @@ class TemplateRecognitionService {
     }
 
     async extractReceiptOptimized(text, options) {
-        console.log('Applying POS receipt template...');
         
         const products = [];
         const lines = text.split('\n');
@@ -624,7 +617,6 @@ class TemplateRecognitionService {
     }
 
     async extractSpreadsheetOptimized(text, options) {
-        console.log('Applying spreadsheet export template...');
         
         // Spreadsheet exports usually have clean tabular data
         return await this.extractTableWithFallback(text, {

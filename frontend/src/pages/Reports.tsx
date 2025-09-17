@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
+import { InventoryLayout } from '@/layouts';
 import { BarChart3, Download, Calendar, TrendingUp, Package, Users, FileText, DollarSign, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,11 +108,8 @@ export default function Reports() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeSection="Reports" />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8">
+    <InventoryLayout activeSection="Reports">
+      <div className="p-8">
           {/* Header */}
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between">
@@ -362,8 +358,7 @@ export default function Reports() {
               </Button>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+    </InventoryLayout>
   );
 }

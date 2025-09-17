@@ -41,13 +41,9 @@ class PDFProcessingService {
         const startTime = Date.now();
         
         try {
-            console.log('🔍 Processing PDF:', filePath);
-            
             // Read and parse PDF
             const dataBuffer = fs.readFileSync(filePath);
             const pdfData = await pdfParse(dataBuffer);
-            
-            console.log(`📄 PDF parsed: ${pdfData.numpages} pages, ${pdfData.text.length} characters`);
             
             // Extract text content
             let text = pdfData.text;
@@ -56,11 +52,9 @@ class PDFProcessingService {
             let templateUsed = null;
             
             // Step 1: Template Recognition (Smart Detection)
-            console.log('🧠 Detecting PDF template...');
             const templateResult = templateRecognitionService.detectTemplate(text);
             
             if (templateResult.hasTemplate) {
-                console.log(`✨ Template detected: ${templateResult.bestMatch.name} (${Math.round(templateResult.bestMatch.confidence * 100)}% confidence)`);
                 templateUsed = templateResult.bestMatch;
                 
                 // Try template-specific extraction first
@@ -97,7 +91,6 @@ class PDFProcessingService {
             const imageDetection = await ocrProcessingService.detectImageContent(text);
             
             if (imageDetection.isLikelyImageBased && options.enableOCR !== false) {
-                console.log('📸 PDF appears to be image-based, enhancing with OCR...');
                 
                 try {
                     const ocrResult = await this.enhanceTextWithOCR(text, filePath);
@@ -105,7 +98,6 @@ class PDFProcessingService {
                         text = ocrResult.enhancedText;
                         extractionMethod = 'ocr_enhanced';
                         ocrUsed = true;
-                        console.log('✅ OCR enhancement completed');
                     }
                 } catch (ocrError) {
                     console.error('⚠️ OCR processing failed:', ocrError.message);
@@ -113,7 +105,6 @@ class PDFProcessingService {
             }
             
             // Step 3: Standard extraction methods
-            console.log('🔧 Applying standard extraction methods...');
             const extractedData = await this.extractProductData(text, {
                 ...options,
                 ocrUsed,
@@ -202,7 +193,6 @@ class PDFProcessingService {
             }
         }
 
-        console.log(`🏆 Best result: ${bestResult.method} with ${bestResult.products.length} products`);
 
         return {
             products: bestResult.products,
@@ -225,7 +215,6 @@ class PDFProcessingService {
      * Enhanced OCR format extraction
      */
     async extractOCRFormat(text, options) {
-        console.log('🔤 Trying OCR-enhanced format extraction...');
         
         const products = ocrProcessingService.extractProductsFromOCRText(text);
         const standardizedProducts = products.map(product => this.standardizeProduct(product));
@@ -243,7 +232,6 @@ class PDFProcessingService {
      * Enhanced table format extraction with better parsing
      */
     async extractTableFormat(text, options) {
-        console.log('📊 Trying enhanced table format extraction...');
         
         const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         const products = [];
@@ -257,7 +245,6 @@ class PDFProcessingService {
                 headers = this.parseHeaders(lines[i]);
                 headerFound = true;
                 
-                console.log(`📋 Found table headers at line ${i + 1}: ${headers.join(', ')}`);
                 
                 // Process table rows with better parsing
                 for (let j = i + 1; j < lines.length && j < i + 200; j++) { // Limit rows to prevent runaway
@@ -283,7 +270,6 @@ class PDFProcessingService {
      * Enhanced list format extraction
      */
     async extractListFormat(text, options) {
-        console.log('📝 Trying enhanced list format extraction...');
         
         const products = [];
         const blocks = this.smartBlockSplit(text);
@@ -308,7 +294,6 @@ class PDFProcessingService {
      * Enhanced invoice format extraction
      */
     async extractInvoiceFormat(text, options) {
-        console.log('🧾 Trying enhanced invoice format extraction...');
         
         const products = [];
         const lines = text.split('\n');
@@ -320,13 +305,11 @@ class PDFProcessingService {
             
             if (this.isItemSectionStart(trimmed)) {
                 inItemSection = true;
-                console.log('📋 Found item section start');
                 continue;
             }
             
             if (this.isItemSectionEnd(trimmed)) {
                 inItemSection = false;
-                console.log(`📋 Item section ended, found ${itemCount} items`);
                 continue;
             }
             
@@ -350,7 +333,6 @@ class PDFProcessingService {
      * Enhanced catalog format extraction
      */
     async extractCatalogFormat(text, options) {
-        console.log('📚 Trying enhanced catalog format extraction...');
         
         const products = [];
         const sections = this.smartCatalogSplit(text);
@@ -759,7 +741,6 @@ class PDFProcessingService {
         try {
             if (fs.existsSync(filePath)) {
                 fs.unlinkSync(filePath);
-                console.log('🧹 Cleaned up temporary file:', filePath);
             }
         } catch (error) {
             console.error('⚠️ Cleanup error:', error.message);

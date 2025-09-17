@@ -1,12 +1,15 @@
-import { useState } from 'react';
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
-import { FileText, Plus, Search, ShoppingCart, Trash2, Calculator, User, CreditCard, Printer } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { InventoryLayout } from '@/layouts';
+import { FileText, Plus, Search, ShoppingCart, Trash2, Calculator, User, CreditCard, Printer, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { apiService, type Customer as ApiCustomer } from '@/lib/api';
+import { type Product } from '@/types/product';
+import { useToast } from '@/hooks/useToast';
 
 interface BillItem {
   id: string;
@@ -14,14 +17,10 @@ interface BillItem {
   price: number;
   quantity: number;
   total: number;
+  currentStock: number; // Add stock tracking
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-}
+type Customer = ApiCustomer; // Use the API Customer type
 
 export default function Billing() {
   const [billItems, setBillItems] = useState<BillItem[]>([]);
@@ -31,40 +30,97 @@ export default function Billing() {
   const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
   const [searchProduct, setSearchProduct] = useState('');
   
-  // Mock data
-  const customers: Customer[] = [
-    { id: '1', name: 'John Doe', phone: '+91 9876543210', email: 'john@email.com' },
-    { id: '2', name: 'Jane Smith', phone: '+91 8765432109', email: 'jane@email.com' },
-    { id: '3', name: 'Bob Johnson', phone: '+91 7654321098', email: 'bob@email.com' }
-  ];
+  // API state management
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // New customer form state
+  const [newCustomerName, setNewCustomerName] = useState('');
+  const [newCustomerPhone, setNewCustomerPhone] = useState('');
+  const [newCustomerEmail, setNewCustomerEmail] = useState('');
+  
+  const { toast } = useToast();
 
-  const products = [
-    { id: '1', name: 'iPhone 13', price: 45000, stock: 10 },
-    { id: '2', name: 'Samsung Galaxy S21', price: 35000, stock: 15 },
-    { id: '3', name: 'OnePlus 9', price: 30000, stock: 8 },
-    { id: '4', name: 'MacBook Air', price: 85000, stock: 5 }
-  ];
+  // Load customers on component mount
+  useEffect(() => {
+    loadCustomers();
+  }, []);
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchProduct.toLowerCase())
-  );
+  // Search products when search term changes
+  useEffect(() => {
+    if (searchProduct.trim()) {
+      searchProducts(searchProduct);
+    } else {
+      setSearchResults([]);
+    }
+  }, [searchProduct]);
 
-  const addItem = (product: any) => {
-    const existingItem = billItems.find(item => item.id === product.id);
+  const loadCustomers = async () => {
+    try {
+      const response = await apiService.getCustomers({ limit: 100 });
+      if (response.success && response.data) {
+        setCustomers(response.data.customers);
+      }
+    } catch (error) {
+      console.error('Error loading customers:', error);
+      toast({ title: 'Error', description: 'Failed to load customers', type: 'error' });
+    }
+  };
+
+  const searchProducts = async (query: string) => {
+    try {
+      const response = await apiService.searchProductsForBilling(query);
+      if (response.success && response.data) {
+        setSearchResults(response.data.products || []);
+      }
+    } catch (error) {
+      console.error('Error searching products:', error);
+      setSearchResults([]);
+    }
+  };
+
+  const addItem = (product: Product) => {
+    const existingItem = billItems.find(item => item.id === product._id);
     
     if (existingItem) {
+      if (existingItem.quantity >= product.currentStock) {
+        toast({ 
+          title: 'Insufficient Stock', 
+          description: `Only ${product.currentStock} items in stock`,
+          type: 'error'
+        });
+        return;
+      }
+      
       setBillItems(prev => prev.map(item =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + 1, total: (item.quantity + 1) * item.price }
+        item.id === product._id
+          ? { 
+              ...item, 
+              quantity: item.quantity + 1, 
+              total: (item.quantity + 1) * item.price 
+            }
           : item
       ));
     } else {
+      if (product.currentStock <= 0) {
+        toast({ title: 'Out of Stock', description: 'Product is out of stock', type: 'error' });
+        return;
+      }
+      
+      // Determine price based on customer type
+      const price = selectedCustomer?.isDealer && product.wholesalePrice 
+        ? product.wholesalePrice 
+        : product.sellingPrice;
+      
       const newItem: BillItem = {
-        id: product.id,
+        id: product._id,
         name: product.name,
-        price: product.price,
+        price,
         quantity: 1,
-        total: product.price
+        total: price,
+        currentStock: product.currentStock
       };
       setBillItems(prev => [...prev, newItem]);
     }
@@ -81,6 +137,16 @@ export default function Billing() {
       return;
     }
     
+    const item = billItems.find(item => item.id === itemId);
+    if (item && quantity > item.currentStock) {
+      toast({ 
+        title: 'Insufficient Stock', 
+        description: `Only ${item.currentStock} items available`,
+        type: 'error'
+      });
+      return;
+    }
+    
     setBillItems(prev => prev.map(item =>
       item.id === itemId
         ? { ...item, quantity, total: quantity * item.price }
@@ -88,42 +154,107 @@ export default function Billing() {
     ));
   };
 
+  const createNewCustomer = async () => {
+    if (!newCustomerName.trim()) {
+      toast({ title: 'Error', description: 'Customer name is required', type: 'error' });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await apiService.createCustomer({
+        name: newCustomerName,
+        phone: newCustomerPhone,
+        email: newCustomerEmail
+      });
+      
+      if (response.success && response.data) {
+        setCustomers(prev => [...prev, response.data!]);
+        setSelectedCustomer(response.data);
+        setNewCustomerName('');
+        setNewCustomerPhone('');
+        setNewCustomerEmail('');
+        setIsCustomerDialogOpen(false);
+        toast({ title: 'Success', description: 'Customer created successfully', type: 'success' });
+      } else {
+        toast({ title: 'Error', description: response.message || 'Failed to create customer', type: 'error' });
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to create customer', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const subtotal = billItems.reduce((sum, item) => sum + item.total, 0);
   const discountAmount = (subtotal * discount) / 100;
   const total = subtotal - discountAmount;
 
-  const handleBillGeneration = () => {
+  const handleBillGeneration = async () => {
     if (billItems.length === 0) {
-      alert('Please add items to the bill');
+      toast({ title: 'Error', description: 'Please add items to the bill', type: 'error' });
       return;
     }
     
-    // Here you would typically:
-    // 1. Save the bill to database
-    // 2. Update stock quantities
-    // 3. Generate PDF invoice
-    // 4. Clear the current bill
-    
-    alert('Bill generated successfully!');
-    setBillItems([]);
-    setSelectedCustomer(null);
-    setDiscount(0);
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const saleData = {
+        customerId: selectedCustomer?._id,
+        items: billItems.map(item => ({
+          productId: item.id,
+          quantity: item.quantity
+        })),
+        discountPercentage: discount,
+        paymentMethod: paymentMethod as any,
+        paymentStatus: 'paid' as any
+      };
+      
+      const response = await apiService.createSale(saleData);
+      
+      if (response.success && response.data) {
+        toast({ 
+          title: 'Success', 
+          description: `Bill generated successfully! Invoice #${response.data.invoiceNumber}`, 
+          type: 'success' 
+        });
+        
+        // Clear the current bill
+        setBillItems([]);
+        setSelectedCustomer(null);
+        setDiscount(0);
+        setSearchProduct('');
+      } else {
+        toast({ title: 'Error', description: response.message || 'Failed to generate bill', type: 'error' });
+      }
+    } catch (error: any) {
+      setError(error.message);
+      toast({ title: 'Error', description: error.message || 'Failed to generate bill', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeSection="Billing" />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8">
-          {/* Header */}
-          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <FileText className="h-6 w-6 text-blue-600" />
-                  Billing & Sales
-                </h1>
+    <InventoryLayout activeSection="Billing">
+      <div className="p-8">
+        {/* Error Alert */}
+        {error && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Header */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                <FileText className="h-6 w-6 text-blue-600" />
+                Billing & Sales
+              </h1>
                 <p className="text-gray-600 mt-1">Create bills and process sales transactions</p>
               </div>
               <div className="flex gap-2">
@@ -146,9 +277,9 @@ export default function Billing() {
                 </h3>
                 <div className="flex gap-2">
                   <Select
-                    value={selectedCustomer?.id || ""}
+                    value={selectedCustomer?._id || ""}
                     onValueChange={(value) => {
-                      const customer = customers.find(c => c.id === value);
+                      const customer = customers.find(c => c._id === value);
                       setSelectedCustomer(customer || null);
                     }}
                   >
@@ -157,7 +288,7 @@ export default function Billing() {
                     </SelectTrigger>
                     <SelectContent>
                       {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
+                        <SelectItem key={customer._id} value={customer._id}>
                           {customer.name} - {customer.phone}
                         </SelectItem>
                       ))}
@@ -177,23 +308,35 @@ export default function Billing() {
                       <div className="space-y-4 py-4">
                         <div className="space-y-2">
                           <Label>Customer Name</Label>
-                          <Input placeholder="Enter customer name" />
+                          <Input 
+                            placeholder="Enter customer name" 
+                            value={newCustomerName}
+                            onChange={(e) => setNewCustomerName(e.target.value)}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>Phone Number</Label>
-                          <Input placeholder="Enter phone number" />
+                          <Input 
+                            placeholder="Enter phone number" 
+                            value={newCustomerPhone}
+                            onChange={(e) => setNewCustomerPhone(e.target.value)}
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label>Email (optional)</Label>
-                          <Input placeholder="Enter email" />
+                          <Input 
+                            placeholder="Enter email" 
+                            value={newCustomerEmail}
+                            onChange={(e) => setNewCustomerEmail(e.target.value)}
+                          />
                         </div>
                       </div>
                       <DialogFooter>
                         <Button variant="outline" onClick={() => setIsCustomerDialogOpen(false)}>
                           Cancel
                         </Button>
-                        <Button onClick={() => setIsCustomerDialogOpen(false)}>
-                          Add Customer
+                        <Button onClick={createNewCustomer} disabled={loading}>
+                          {loading ? 'Creating...' : 'Add Customer'}
                         </Button>
                       </DialogFooter>
                     </DialogContent>
@@ -228,18 +371,23 @@ export default function Billing() {
                 
                 {searchProduct && (
                   <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {filteredProducts.map((product) => (
+                    {searchResults.map((product) => (
                       <div
-                        key={product.id}
+                        key={product._id}
                         onClick={() => addItem(product)}
                         className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
                       >
                         <div>
                           <p className="font-medium">{product.name}</p>
-                          <p className="text-sm text-gray-600">Stock: {product.stock}</p>
+                          <p className="text-sm text-gray-600">Stock: {product.currentStock}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold">₹{product.price.toLocaleString()}</p>
+                          <p className="font-semibold">
+                            ₹{(selectedCustomer?.isDealer && product.wholesalePrice 
+                              ? product.wholesalePrice 
+                              : product.sellingPrice
+                            ).toLocaleString()}
+                          </p>
                           <Button size="sm" className="mt-1">
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -247,7 +395,7 @@ export default function Billing() {
                       </div>
                     ))}
                     
-                    {filteredProducts.length === 0 && (
+                    {searchResults.length === 0 && (
                       <p className="text-gray-500 text-center py-4">No products found</p>
                     )}
                   </div>
@@ -354,14 +502,15 @@ export default function Billing() {
                   
                   {/* Generate Bill Button */}
                   <div className="flex gap-2 pt-4">
-                    <Button onClick={handleBillGeneration} className="flex-1">
+                    <Button onClick={handleBillGeneration} className="flex-1" disabled={loading}>
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Generate Bill
+                      {loading ? 'Processing...' : 'Generate Bill'}
                     </Button>
                     <Button variant="outline" onClick={() => {
                       setBillItems([]);
                       setSelectedCustomer(null);
                       setDiscount(0);
+                      setError(null);
                     }}>
                       Clear
                     </Button>
@@ -370,8 +519,7 @@ export default function Billing() {
               )}
             </div>
           </div>
-        </main>
       </div>
-    </div>
+    </InventoryLayout>
   );
 }

@@ -15,7 +15,6 @@ import BarcodeGenerator from '@/pages/BarcodeGenerator';
 import LabelPrinting from '@/pages/LabelPrinting';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
-import DialogTest from '@/pages/DialogTest';
 import NotFound from '@/pages/NotFound';
 
 function App() {
@@ -28,7 +27,6 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/test-dialog" element={<DialogTest />} />
             
             {/* Protected routes */}
             <Route 

@@ -414,9 +414,20 @@ npm run dev
 - Follow our [Code of Conduct](CODE_OF_CONDUCT.md)
 - Check existing [issues](https://github.com/Princelad/stockify/issues) before creating new ones
 - Follow conventional commit messages (`feat:`, `fix:`, `docs:`, etc.)
+- **Maintain high code quality** with proper naming conventions and clean code practices
+- **Always clean up code**: Remove unused imports, console logs, and follow naming conventions
 - Write tests for new features and bug fixes
 - Update documentation for API changes
 - Ensure all tests pass before submitting PR
+
+### Code Quality Standards
+
+- **Naming Conventions**: Use PascalCase for components, camelCase for functions/variables
+- **Import Organization**: External → Internal → Types (separate sections)
+- **Error Handling**: Consistent try-catch patterns with proper user feedback
+- **TypeScript**: All code must be properly typed with interfaces/types
+- **Cleanup**: Automatic removal of unused code, console logs, and dead imports
+- **Performance**: Use React hooks (useMemo, useCallback) for optimization
 
 ### Recognition
 

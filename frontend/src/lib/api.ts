@@ -11,6 +11,82 @@ import type {
   Category
 } from '@/types/product';
 
+// Additional types for sales and customers
+export interface Customer {
+  _id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  isDealer: boolean;
+  totalDue: number;
+  purchaseHistory: Array<{
+    saleId: string;
+    amount: number;
+    date: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BillItem {
+  productId: string;
+  quantity: number;
+}
+
+export interface CreateSaleRequest {
+  customerId?: string;
+  items: BillItem[];
+  discountPercentage?: number;
+  paymentMethod?: 'cash' | 'card' | 'upi' | 'netbanking' | 'credit';
+  paymentStatus?: 'paid' | 'pending' | 'partial';
+}
+
+export interface Sale {
+  _id: string;
+  customer?: Customer;
+  items: Array<{
+    product: {
+      _id: string;
+      name: string;
+      sku: string;
+    };
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+  }>;
+  subtotal: number;
+  discountPercentage: number;
+  discountAmount: number;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  invoiceNumber: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SalesResponse {
+  sales: Sale[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
+export interface CustomersResponse {
+  customers: Customer[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+  };
+}
+
 // API response types
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -265,6 +341,139 @@ class ApiService {
 
   async getSuppliers(): Promise<ApiResponse<Supplier[]>> {
     return this.request('/products/suppliers', {
+      method: 'GET',
+    });
+  }
+
+  // =====================================================
+  // SALES API METHODS
+  // =====================================================
+
+  async getSales(params?: {
+    page?: number;
+    limit?: number;
+    customer?: string;
+    paymentMethod?: string;
+    paymentStatus?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<ApiResponse<SalesResponse>> {
+    const query = params ? `?${new URLSearchParams(
+      Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== '')
+        .map(([key, value]) => [key, String(value)])
+    ).toString()}` : '';
+    
+    return this.request(`/sales${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async getSale(id: string): Promise<ApiResponse<Sale>> {
+    return this.request(`/sales/${id}`, {
+      method: 'GET',
+    });
+  }
+
+  async createSale(saleData: CreateSaleRequest): Promise<ApiResponse<Sale>> {
+    return this.request('/sales', {
+      method: 'POST',
+      body: JSON.stringify(saleData),
+    });
+  }
+
+  async updateSalePayment(id: string, paymentStatus: string): Promise<ApiResponse<Sale>> {
+    return this.request(`/sales/${id}/payment`, {
+      method: 'PUT',
+      body: JSON.stringify({ paymentStatus }),
+    });
+  }
+
+  async deleteSale(id: string): Promise<ApiResponse> {
+    return this.request(`/sales/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getSalesStats(period?: number): Promise<ApiResponse<{
+    totalSales: number;
+    totalRevenue: number;
+    recentSales: Sale[];
+    period: number;
+  }>> {
+    const query = period ? `?period=${period}` : '';
+    return this.request(`/sales/stats${query}`, {
+      method: 'GET',
+    });
+  }
+
+  // =====================================================
+  // CUSTOMER API METHODS
+  // =====================================================
+
+  async getCustomers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }): Promise<ApiResponse<CustomersResponse>> {
+    const query = params ? `?${new URLSearchParams(
+      Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== '')
+        .map(([key, value]) => [key, String(value)])
+    ).toString()}` : '';
+    
+    return this.request(`/customers${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async getCustomer(id: string): Promise<ApiResponse<Customer>> {
+    return this.request(`/customers/${id}`, {
+      method: 'GET',
+    });
+  }
+
+  async createCustomer(customerData: {
+    name: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    isDealer?: boolean;
+  }): Promise<ApiResponse<Customer>> {
+    return this.request('/customers', {
+      method: 'POST',
+      body: JSON.stringify(customerData),
+    });
+  }
+
+  async updateCustomer(id: string, customerData: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    isDealer?: boolean;
+  }): Promise<ApiResponse<Customer>> {
+    return this.request(`/customers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(customerData),
+    });
+  }
+
+  async deleteCustomer(id: string): Promise<ApiResponse> {
+    return this.request(`/customers/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async searchCustomers(query: string): Promise<ApiResponse<Customer[]>> {
+    return this.request(`/customers/search?q=${encodeURIComponent(query)}`, {
+      method: 'GET',
+    });
+  }
+
+  // Enhanced product search for billing (includes stock info)
+  async searchProductsForBilling(query: string): Promise<ApiResponse<ProductsResponse>> {
+    return this.request(`/products?search=${encodeURIComponent(query)}&limit=10&includeStock=true`, {
       method: 'GET',
     });
   }

@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Sidebar } from '@/components/inventory/Sidebar';
-import { Topbar } from '@/components/inventory/Topbar';
+import { InventoryLayout } from '@/layouts';
 import { Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin, Package, TrendingUp, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -155,11 +154,8 @@ export default function Suppliers() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <Sidebar activeSection="Suppliers" />
-      <div className="flex-1 flex flex-col">
-        <Topbar />
-        <main className="flex-1 p-8">
+    <InventoryLayout activeSection="Suppliers">
+      <div className="p-8">
           {/* Header */}
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
             <div className="flex items-center justify-between">
@@ -467,8 +463,7 @@ export default function Suppliers() {
               )}
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+        </div>
+    </InventoryLayout>
   );
 }
