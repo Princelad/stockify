@@ -1,87 +1,107 @@
-import React from 'react';
-import { X, CheckCircle, AlertCircle, AlertTriangle, Info } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import type { Toast } from '@/hooks/useToast';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import { X } from "lucide-react";
 
-interface ToastProps {
-  toast: Toast;
-  onRemove: (id: string) => void;
-}
-
-const toastVariants = {
-  success: {
-    icon: CheckCircle,
-    className: 'border-green-200 bg-green-50 text-green-800',
-    iconClassName: 'text-green-600',
-  },
-  error: {
-    icon: AlertCircle,
-    className: 'border-red-200 bg-red-50 text-red-800',
-    iconClassName: 'text-red-600',
-  },
-  warning: {
-    icon: AlertTriangle,
-    className: 'border-yellow-200 bg-yellow-50 text-yellow-800',
-    iconClassName: 'text-yellow-600',
-  },
-  info: {
-    icon: Info,
-    className: 'border-blue-200 bg-blue-50 text-blue-800',
-    iconClassName: 'text-blue-600',
-  },
+const ToastProvider = ({ children }: { children: React.ReactNode }) => {
+  return <>{children}</>;
 };
 
-export const ToastComponent: React.FC<ToastProps> = ({ toast, onRemove }) => {
-  const variant = toastVariants[toast.type];
-  const Icon = variant.icon;
+const ToastViewport = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className="fixed top-0 z-[100] flex max-h-screen w-full flex-col-reverse p-4 sm:bottom-0 sm:right-0 sm:top-auto sm:flex-col md:max-w-[420px]"
+    {...props}
+  />
+));
+ToastViewport.displayName = "ToastViewport";
 
-  return (
-    <Card 
-      className={cn(
-        "mb-2 shadow-lg transition-all duration-300 ease-in-out animate-in slide-in-from-right-5",
-        variant.className
-      )}
-    >
-      <CardContent className="flex items-start gap-3 p-4">
-        <Icon className={cn("h-5 w-5 mt-0.5", variant.iconClassName)} />
-        <div className="flex-1">
-          <h4 className="font-semibold text-sm">{toast.title}</h4>
-          {toast.description && (
-            <p className="text-sm opacity-90 mt-1">{toast.description}</p>
-          )}
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onRemove(toast.id)}
-          className="h-6 w-6 p-0 hover:bg-black/5"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </CardContent>
-    </Card>
-  );
-};
-
-interface ToastContainerProps {
-  toasts: Toast[];
-  onRemove: (id: string) => void;
+interface ToastProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "destructive" | "success";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove }) => {
-  if (toasts.length === 0) return null;
+const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
+  ({ className, variant = "default", ...props }, ref) => {
+    const variantClasses = {
+      default: "border bg-white text-gray-900",
+      destructive: "border-red-500 bg-red-50 text-red-800",
+      success: "border-green-500 bg-green-50 text-green-800",
+    };
 
-  return (
-    <div className="fixed top-4 right-4 z-50 w-80 max-w-sm">
-      {toasts.map((toast) => (
-        <ToastComponent
-          key={toast.id}
-          toast={toast}
-          onRemove={onRemove}
-        />
-      ))}
-    </div>
-  );
+    return (
+      <div
+        ref={ref}
+        className={`group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all ${variantClasses[variant]}`}
+        {...props}
+      />
+    );
+  }
+);
+Toast.displayName = "Toast";
+
+const ToastAction = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => (
+  <button
+    ref={ref}
+    className="inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium transition-colors hover:bg-gray-100 focus:outline-none focus:ring-2 disabled:pointer-events-none disabled:opacity-50"
+    {...props}
+  />
+));
+ToastAction.displayName = "ToastAction";
+
+const ToastClose = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => (
+  <button
+    ref={ref}
+    className="absolute right-2 top-2 rounded-md p-1 text-gray-500 opacity-0 transition-opacity hover:text-gray-900 focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100"
+    {...props}
+  >
+    <X className="h-4 w-4" />
+  </button>
+));
+ToastClose.displayName = "ToastClose";
+
+const ToastTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className="text-sm font-semibold"
+    {...props}
+  />
+));
+ToastTitle.displayName = "ToastTitle";
+
+const ToastDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className="text-sm opacity-90"
+    {...props}
+  />
+));
+ToastDescription.displayName = "ToastDescription";
+
+type ToastActionElement = React.ReactElement<typeof ToastAction>;
+
+export {
+  type ToastProps,
+  type ToastActionElement,
+  ToastProvider,
+  ToastViewport,
+  Toast,
+  ToastTitle,
+  ToastDescription,
+  ToastClose,
+  ToastAction,
 };

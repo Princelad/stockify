@@ -125,3 +125,16 @@
     background: rgba(0, 0, 0, 0.8);
   }
 }
+
+/* Add this to your existing CSS file */
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
