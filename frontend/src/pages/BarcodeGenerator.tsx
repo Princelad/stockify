@@ -299,7 +299,8 @@ export default function BarcodeGenerator() {
   const [selectedProducts, setSelectedProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [customBarcode, setCustomBarcode] = useState("");
-  const [barcodeType, setBarcodeType] = useState("CODE128");
+  const [barcodeType, setBarcodeType] = useState("CODE128"); // For products
+  const [customBarcodeType, setCustomBarcodeType] = useState("CODE128"); // Separate for custom
   const [generatedBarcodes, setGeneratedBarcodes] = useState<
     Array<{ product: Product; barcode: string }>
   >([]);
@@ -461,7 +462,20 @@ export default function BarcodeGenerator() {
       product.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const barcodeTypes = [
+  const productBarcodeTypes = [
+    {
+      value: "CODE128",
+      label: "Code 128",
+      validator: (text: string) => ({ isValid: true, message: "" }),
+    },
+    {
+      value: "QR",
+      label: "QR Code",
+      validator: (text: string) => ({ isValid: true, message: "" }),
+    },
+  ];
+
+  const customBarcodeTypes = [
     {
       value: "CODE128",
       label: "Code 128",
@@ -484,12 +498,12 @@ export default function BarcodeGenerator() {
       value: "EAN13",
       label: "EAN-13",
       validator: (text: string) => {
-        const valid = /^\d{12}$/.test(text); // 12 digits (13th is check digit)
+        const valid = /^\d{12,13}$/.test(text);
         return {
           isValid: valid,
           message: valid
             ? ""
-            : "EAN-13 requires exactly 12 digits (check digit will be added automatically)",
+            : "EAN-13 requires 12 digits (check digit auto-calculated) or 13 digits (complete code)",
         };
       },
     },
@@ -497,12 +511,12 @@ export default function BarcodeGenerator() {
       value: "UPC",
       label: "UPC-A",
       validator: (text: string) => {
-        const valid = /^\d{11}$/.test(text); // 11 digits (12th is check digit)
+        const valid = /^\d{11,12}$/.test(text);
         return {
           isValid: valid,
           message: valid
             ? ""
-            : "UPC-A requires exactly 11 digits (check digit will be added automatically)",
+            : "UPC-A requires 11 digits (check digit auto-calculated) or 12 digits (complete code)",
         };
       },
     },
@@ -513,15 +527,15 @@ export default function BarcodeGenerator() {
     },
   ];
 
-  // Validate input when barcode type or custom barcode changes
+  // Validate input when custom barcode type or custom barcode changes
   useEffect(() => {
     validateBarcode(customBarcode);
-  }, [barcodeType, customBarcode]);
+  }, [customBarcodeType, customBarcode]);
 
-  // Render barcodes after they're generated
+  // Render barcodes after they're generated (use appropriate barcode type)
   useEffect(() => {
     renderBarcodes();
-  }, [generatedBarcodes, barcodeType]);
+  }, [generatedBarcodes]);
 
   const validateBarcode = (text: string) => {
     if (!text) {
@@ -532,8 +546,8 @@ export default function BarcodeGenerator() {
       return false;
     }
 
-    const selectedType = barcodeTypes.find(
-      (type) => type.value === barcodeType
+    const selectedType = customBarcodeTypes.find(
+      (type) => type.value === customBarcodeType // Use custom barcode type for validation
     );
     if (selectedType) {
       const result = selectedType.validator(text);
@@ -542,6 +556,65 @@ export default function BarcodeGenerator() {
     }
 
     return true;
+  };
+
+  const generateBarcode = (text: string, type: string) => {
+    // Format the text based on barcode type if needed
+    let formattedText = text;
+
+    if (type === "EAN13") {
+      if (text.length === 12) {
+        // Calculate EAN-13 check digit
+        let sum = 0;
+        for (let i = 0; i < 12; i++) {
+          sum += parseInt(text[i]) * (i % 2 === 0 ? 1 : 3);
+        }
+        const checkDigit = (10 - (sum % 10)) % 10;
+        formattedText = text + checkDigit;
+      } else if (text.length === 13) {
+        // Already has check digit, validate it
+        let sum = 0;
+        for (let i = 0; i < 12; i++) {
+          sum += parseInt(text[i]) * (i % 2 === 0 ? 1 : 3);
+        }
+        const calculatedCheckDigit = (10 - (sum % 10)) % 10;
+        const providedCheckDigit = parseInt(text[12]);
+
+        if (calculatedCheckDigit !== providedCheckDigit) {
+          console.warn(
+            `EAN-13 check digit mismatch. Expected: ${calculatedCheckDigit}, Got: ${providedCheckDigit}`
+          );
+        }
+        formattedText = text;
+      }
+    } else if (type === "UPC") {
+      if (text.length === 11) {
+        // Calculate UPC-A check digit
+        let sum = 0;
+        for (let i = 0; i < 11; i++) {
+          sum += parseInt(text[i]) * (i % 2 === 0 ? 3 : 1);
+        }
+        const checkDigit = (10 - (sum % 10)) % 10;
+        formattedText = text + checkDigit;
+      } else if (text.length === 12) {
+        // Already has check digit, validate it
+        let sum = 0;
+        for (let i = 0; i < 11; i++) {
+          sum += parseInt(text[i]) * (i % 2 === 0 ? 3 : 1);
+        }
+        const calculatedCheckDigit = (10 - (sum % 10)) % 10;
+        const providedCheckDigit = parseInt(text[11]);
+
+        if (calculatedCheckDigit !== providedCheckDigit) {
+          console.warn(
+            `UPC-A check digit mismatch. Expected: ${calculatedCheckDigit}, Got: ${providedCheckDigit}`
+          );
+        }
+        formattedText = text;
+      }
+    }
+
+    return formattedText;
   };
 
   const renderBarcodes = () => {
@@ -554,7 +627,10 @@ export default function BarcodeGenerator() {
       // Clear previous barcode
       barcodeElement.innerHTML = "";
 
-      if (barcodeType === "QR") {
+      // Determine which barcode type to use for rendering
+      const renderType = item.product.id === "custom" ? customBarcodeType : barcodeType;
+
+      if (renderType === "QR") {
         // Generate QR code
         const canvas = document.createElement("canvas");
         QRCode.toCanvas(
@@ -563,12 +639,12 @@ export default function BarcodeGenerator() {
           {
             width: 128,
             margin: 1,
-            errorCorrectionLevel: "H", // Higher error correction for better scanning
+            errorCorrectionLevel: "H",
           },
           (error) => {
             if (error) {
-              console.error(error);
-              barcodeElement.innerHTML = `<div class="text-red-500">Error generating QR code</div>`;
+              console.error("QR Code generation error:", error);
+              barcodeElement.innerHTML = `<div class="text-red-500 text-sm">Error generating QR code: ${error.message}</div>`;
             } else {
               barcodeElement.appendChild(canvas);
             }
@@ -583,18 +659,39 @@ export default function BarcodeGenerator() {
         barcodeElement.appendChild(svgElement);
 
         try {
+          // Special handling for EAN13 and UPC
+          let barcodeFormat = renderType;
+          if (renderType === "UPC") {
+            barcodeFormat = "UPC"; // JsBarcode expects "UPC" not "UPC-A"
+          }
+
           JsBarcode(svgElement, item.barcode, {
-            format: barcodeType,
-            width: 2,
-            height: 60,
+            format: barcodeFormat,
+            width: renderType === "EAN13" || renderType === "UPC" ? 1.5 : 2,
+            height: renderType === "EAN13" || renderType === "UPC" ? 50 : 60,
             displayValue: true,
             font: "monospace",
-            fontSize: 12,
+            fontSize: 11,
             margin: 5,
+            background: "#ffffff",
+            lineColor: "#000000",
+            // Additional options for EAN13 and UPC
+            ...(renderType === "EAN13" && {
+              format: "EAN13",
+              flat: false,
+            }),
+            ...(renderType === "UPC" && {
+              format: "UPC",
+              flat: false,
+            }),
           });
         } catch (e) {
           console.error("Barcode generation error:", e);
-          barcodeElement.innerHTML = `<div class="text-red-500">Error generating barcode</div>`;
+          barcodeElement.innerHTML = `<div class="text-red-500 text-sm p-2 bg-red-50 rounded">
+            <strong>Error generating barcode:</strong><br/>
+            ${e instanceof Error ? e.message : 'Unknown error'}<br/>
+            <small class="text-gray-600">Code: ${item.barcode}</small>
+          </div>`;
         }
       }
     });
@@ -610,29 +707,46 @@ export default function BarcodeGenerator() {
     setSelectedProducts((prev) => prev.filter((p) => p.id !== productId));
   };
 
-  const generateBarcode = (text: string) => {
-    // Format the text based on barcode type if needed
-    let formattedText = text;
+  const handleGenerateCustomBarcode = () => {
+    if (customBarcode && validateBarcode(customBarcode)) {
+      setIsGenerating(true);
 
-    if (barcodeType === "EAN13" && /^\d{12}$/.test(text)) {
-      // EAN-13 calculation with proper checksum
-      let sum = 0;
-      for (let i = 0; i < 12; i++) {
-        sum += parseInt(text[i]) * (i % 2 === 0 ? 1 : 3);
+      try {
+        const formattedBarcode = generateBarcode(customBarcode, customBarcodeType);
+        const customProduct: Product = {
+          id: "custom",
+          name: "Custom Item",
+          sku: customBarcode,
+          barcode: formattedBarcode,
+          price: 0,
+          category: "Custom",
+        };
+
+        // Clear any existing barcodes (both product and custom)
+        setGeneratedBarcodes([
+          {
+            product: customProduct,
+            barcode: formattedBarcode,
+          },
+        ]);
+        barcodeRefs.current = [null];
+
+        showNotification(
+          "success",
+          "Custom Barcode Generated",
+          `Generated ${customBarcodeTypes.find((t) => t.value === customBarcodeType)?.label} barcode`
+        );
+      } catch (err) {
+        console.error("Custom barcode generation error:", err);
+        showNotification(
+          "error",
+          "Error",
+          "Failed to generate custom barcode. Please try again."
+        );
+      } finally {
+        setIsGenerating(false);
       }
-      const checkDigit = (10 - (sum % 10)) % 10;
-      formattedText = text + checkDigit;
-    } else if (barcodeType === "UPC" && /^\d{11}$/.test(text)) {
-      // UPC-A calculation with proper checksum
-      let sum = 0;
-      for (let i = 0; i < 11; i++) {
-        sum += parseInt(text[i]) * (i % 2 === 0 ? 3 : 1);
-      }
-      const checkDigit = (10 - (sum % 10)) % 10;
-      formattedText = text + checkDigit;
     }
-
-    return formattedText;
   };
 
   const handleGenerateBarcodes = async () => {
@@ -642,20 +756,36 @@ export default function BarcodeGenerator() {
 
     try {
       const newBarcodes = selectedProducts.map((product) => {
-        const barcode = product.barcode || generateBarcode(product.sku);
+        let barcode = product.barcode;
+
+        // If product doesn't have a barcode, generate one based on SKU
+        if (!barcode) {
+          barcode = product.sku; // Both CODE128 and QR can handle any text
+        } else {
+          // If product has existing barcode, validate it for current type
+          const selectedType = productBarcodeTypes.find((type) => type.value === barcodeType);
+          if (selectedType) {
+            const validation = selectedType.validator(barcode);
+            if (!validation.isValid) {
+              barcode = product.sku;
+            }
+          }
+        }
+
         return {
           product,
-          barcode,
+          barcode: generateBarcode(barcode, barcodeType),
         };
       });
 
+      // Clear any existing barcodes and set new ones
       setGeneratedBarcodes(newBarcodes);
       barcodeRefs.current = Array(newBarcodes.length).fill(null);
 
       showNotification(
         "success",
         "Barcodes Generated",
-        `Generated ${newBarcodes.length} barcode(s) successfully`
+        `Generated ${newBarcodes.length} ${barcodeType === "QR" ? "QR Code" : "Code 128"} barcode(s)`
       );
     } catch (err) {
       console.error("Error generating barcodes:", err);
@@ -669,45 +799,24 @@ export default function BarcodeGenerator() {
     }
   };
 
-  const handleGenerateCustomBarcode = () => {
-    if (customBarcode && validateBarcode(customBarcode)) {
-      setIsGenerating(true);
+  // Test connection and authentication
+  const testConnection = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/products", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
-      try {
-        const formattedBarcode = generateBarcode(customBarcode);
-        const customProduct: Product = {
-          id: "custom",
-          name: "Custom Item",
-          sku: customBarcode,
-          barcode: formattedBarcode,
-          price: 0,
-          category: "Custom",
-        };
-
-        setGeneratedBarcodes([
-          {
-            product: customProduct,
-            barcode: formattedBarcode,
-          },
-        ]);
-        barcodeRefs.current = [null];
-
-        showNotification(
-          "success",
-          "Custom Barcode Generated",
-          `Barcode type: ${
-            barcodeTypes.find((t) => t.value === barcodeType)?.label
-          }`
-        );
-      } catch (err) {
-        showNotification(
-          "error",
-          "Error",
-          "Failed to generate custom barcode. Please try again."
-        );
-      } finally {
-        setIsGenerating(false);
+      if (response.ok) {
+        const result = await response.json();
+        console.log("Connection test successful:", result);
+      } else {
+        console.error("Connection test failed:", response.statusText);
       }
+    } catch (error) {
+      console.error("Error testing connection:", error);
     }
   };
 
@@ -762,7 +871,7 @@ export default function BarcodeGenerator() {
     }
   };
 
-  const handleDownload = async (format: "png" | "svg" | "pdf") => {
+  const handleDownload = async (format: "png" | "pdf") => {
     if (!barcodesContainerRef.current || generatedBarcodes.length === 0) return;
 
     setIsDownloading(true);
@@ -776,6 +885,23 @@ export default function BarcodeGenerator() {
           useCORS: true,
           logging: false,
           backgroundColor: "#ffffff",
+          ignoreElements: (element) => {
+            // Skip elements that might cause parsing issues
+            return element.classList.contains('ignore-in-canvas');
+          },
+          onclone: (clonedDoc) => {
+            // Clean up any problematic CSS before rendering
+            const allElements = clonedDoc.querySelectorAll('*');
+            allElements.forEach((el) => {
+              const htmlEl = el as HTMLElement;
+              // Remove any CSS properties that might cause issues
+              if (htmlEl.style) {
+                htmlEl.style.removeProperty('oklch');
+                htmlEl.style.removeProperty('color-mix');
+                htmlEl.style.removeProperty('light-dark');
+              }
+            });
+          }
         });
         const imgData = canvas.toDataURL("image/png");
 
@@ -796,6 +922,21 @@ export default function BarcodeGenerator() {
           scale: 2,
           useCORS: true,
           backgroundColor: "#ffffff",
+          logging: false,
+          ignoreElements: (element) => {
+            return element.classList.contains('ignore-in-canvas');
+          },
+          onclone: (clonedDoc) => {
+            const allElements = clonedDoc.querySelectorAll('*');
+            allElements.forEach((el) => {
+              const htmlEl = el as HTMLElement;
+              if (htmlEl.style) {
+                htmlEl.style.removeProperty('oklch');
+                htmlEl.style.removeProperty('color-mix');
+                htmlEl.style.removeProperty('light-dark');
+              }
+            });
+          }
         });
         const link = document.createElement("a");
         link.download = `barcodes_${timestamp}.png`;
@@ -806,48 +947,6 @@ export default function BarcodeGenerator() {
           "success",
           "PNG Downloaded",
           "Your barcodes have been saved as PNG"
-        );
-      } else if (format === "svg") {
-        if (barcodeType === "QR") {
-          showNotification(
-            "error",
-            "Format not supported",
-            "SVG download is not available for QR codes. Please use PNG instead."
-          );
-          setIsDownloading(false);
-          return;
-        }
-
-        let svgContent =
-          '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800">';
-        let yOffset = 20;
-
-        generatedBarcodes.forEach((item, index) => {
-          const barcodeElement = barcodeRefs.current[index];
-          if (barcodeElement && barcodeElement.querySelector("svg")) {
-            const svg = barcodeElement.querySelector("svg")!;
-            const svgHeight = parseInt(svg.getAttribute("height") || "100");
-
-            svgContent += `<g transform="translate(20,${yOffset})">
-              <text x="0" y="-5" font-family="Arial" font-size="12">${item.product.name} (${item.product.sku})</text>
-              ${svg.innerHTML}
-            </g>`;
-            yOffset += svgHeight + 40;
-          }
-        });
-
-        svgContent += "</svg>";
-
-        const blob = new Blob([svgContent], { type: "image/svg+xml" });
-        const link = document.createElement("a");
-        link.download = `barcodes_${timestamp}.svg`;
-        link.href = URL.createObjectURL(blob);
-        link.click();
-
-        showNotification(
-          "success",
-          "SVG Downloaded",
-          "Your barcodes have been saved as SVG"
         );
       }
     } catch (err) {
@@ -1102,8 +1201,7 @@ export default function BarcodeGenerator() {
                   Login Required
                 </h3>
                 <p className="text-yellow-700 mt-1">
-                  You need to be logged in to access your products. Redirecting
-                  to login page...
+                  Please log in to access your products and generate barcodes.
                 </p>
               </div>
               <Button
@@ -1127,7 +1225,7 @@ export default function BarcodeGenerator() {
                   Select Products
                   {isUsingMockData && (
                     <Badge variant="outline" className="text-xs">
-                      Sample Data
+                      Demo Data
                     </Badge>
                   )}
                 </h3>
@@ -1149,7 +1247,7 @@ export default function BarcodeGenerator() {
               <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
-                  placeholder="Search products by name or SKU..."
+                  placeholder="Search products..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -1174,7 +1272,7 @@ export default function BarcodeGenerator() {
                             SKU: {product.sku}
                           </p>
                           {product.barcode && (
-                            <Badge className="bg-green-100 text-green-800">
+                            <Badge className="bg-green-100 text-green-800 text-xs">
                               Has Barcode
                             </Badge>
                           )}
@@ -1191,7 +1289,7 @@ export default function BarcodeGenerator() {
                             (p) => p.id === product.id
                           )}
                         >
-                          Add
+                          {selectedProducts.some((p) => p.id === product.id) ? "Added" : "Add"}
                         </Button>
                       </div>
                     </div>
@@ -1214,7 +1312,7 @@ export default function BarcodeGenerator() {
             <div className="bg-white rounded-xl shadow-sm p-6">
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Hash className="h-5 w-5" />
-                Generate Custom Barcode
+                Custom Barcode
               </h3>
 
               <div className="space-y-4">
@@ -1238,30 +1336,33 @@ export default function BarcodeGenerator() {
                 </div>
 
                 <div>
-                  <Label htmlFor="barcodeType">Barcode Type</Label>
+                  <Label htmlFor="customBarcodeType">Barcode Type</Label>
                   <select
-                    id="barcodeType"
-                    value={barcodeType}
-                    onChange={(e) => setBarcodeType(e.target.value)}
-                    className="w-full p-2 border rounded-md"
+                    id="customBarcodeType"
+                    value={customBarcodeType}
+                    onChange={(e) => {
+                      setCustomBarcodeType(e.target.value);
+                      if (customBarcode) {
+                        setCustomBarcode("");
+                      }
+                    }}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
-                    {barcodeTypes.map((type) => (
+                    {customBarcodeTypes.map((type) => (
                       <option key={type.value} value={type.value}>
                         {type.label}
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {barcodeType === "EAN13" &&
-                      "EAN-13: Requires exactly 12 digits (13th digit is calculated)"}
-                    {barcodeType === "UPC" &&
-                      "UPC-A: Requires exactly 11 digits (12th digit is calculated)"}
-                    {barcodeType === "CODE39" &&
-                      "Code 39: Letters, numbers and - . $ / + % space"}
-                    {barcodeType === "CODE128" &&
-                      "Code 128: All ASCII characters"}
-                    {barcodeType === "QR" && "QR Code: Any text or data"}
-                  </p>
+                  
+                  {/* Simplified help text */}
+                  <div className="text-xs text-gray-500 mt-1">
+                    {customBarcodeType === "EAN13" && "12-13 digits • Example: 123456789012"}
+                    {customBarcodeType === "UPC" && "11-12 digits • Example: 12345678901"}
+                    {customBarcodeType === "CODE39" && "Letters, numbers • Example: ABC123"}
+                    {customBarcodeType === "CODE128" && "Any ASCII characters"}
+                    {customBarcodeType === "QR" && "Any text, URLs, or data"}
+                  </div>
                 </div>
 
                 <Button
@@ -1274,7 +1375,7 @@ export default function BarcodeGenerator() {
                   {isGenerating ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : (
-                    "Generate Custom Barcode"
+                    "Generate Barcode"
                   )}
                 </Button>
               </div>
@@ -1290,49 +1391,76 @@ export default function BarcodeGenerator() {
                   Selected Products ({selectedProducts.length})
                 </h3>
                 {selectedProducts.length > 0 && (
-                  <Button
-                    onClick={handleGenerateBarcodes}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      "Generate Barcodes"
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={barcodeType}
+                      onChange={(e) => setBarcodeType(e.target.value)}
+                      className="text-sm px-2 py-1 border rounded-md min-w-[100px]"
+                      disabled={isGenerating}
+                    >
+                      {productBarcodeTypes.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      onClick={handleGenerateBarcodes}
+                      disabled={isGenerating}
+                      size="sm"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        "Generate"
+                      )}
+                    </Button>
+                  </div>
                 )}
               </div>
 
               {selectedProducts.length > 0 ? (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {selectedProducts.map((product) => (
-                    <div
-                      key={product.id}
-                      className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
-                    >
-                      <div>
-                        <p className="font-medium">{product.name}</p>
-                        <p className="text-sm text-gray-600">
-                          SKU: {product.sku}
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => removeFromGeneration(product.id)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                <>
+                  <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      Products use Code 128 or QR codes (compatible with any SKU format)
+                    </p>
+                  </div>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {selectedProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        className="flex items-center justify-between p-3 bg-blue-50 rounded-lg"
                       >
-                        Remove
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+                        <div>
+                          <p className="font-medium">{product.name}</p>
+                          <p className="text-sm text-gray-600">
+                            SKU: {product.sku}
+                          </p>
+                          {product.barcode && (
+                            <p className="text-xs text-green-600">
+                              Existing: {product.barcode}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => removeFromGeneration(product.id)}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   <Tag className="h-12 w-12 mx-auto mb-2 opacity-50" />
                   <p>No products selected</p>
                   <p className="text-sm">
-                    Select products from the list to generate barcodes
+                    Select products from the list above
                   </p>
                 </div>
               )}
@@ -1342,7 +1470,9 @@ export default function BarcodeGenerator() {
             {generatedBarcodes.length > 0 && (
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Generated Barcodes</h3>
+                  <h3 className="text-lg font-semibold">
+                    Generated Barcodes ({generatedBarcodes.length})
+                  </h3>
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -1355,13 +1485,6 @@ export default function BarcodeGenerator() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDownload("svg")}
-                      disabled={isDownloading || barcodeType === "QR"}
-                    >
-                      SVG
-                    </Button>
-                    <Button
-                      size="sm"
                       onClick={() => handleDownload("pdf")}
                       disabled={isDownloading}
                     >
@@ -1380,13 +1503,14 @@ export default function BarcodeGenerator() {
                         <div>
                           <p className="font-medium">{item.product.name}</p>
                           <p className="text-sm text-gray-600">
-                            SKU: {item.product.sku}
+                            {item.product.id === "custom" ? "Custom Code" : `SKU: ${item.product.sku}`}
                           </p>
                         </div>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => copyToClipboard(item.barcode)}
+                          title="Copy barcode"
                         >
                           <Copy className="h-4 w-4" />
                         </Button>
@@ -1404,10 +1528,9 @@ export default function BarcodeGenerator() {
                           {item.barcode}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
-                          Type:{" "}
-                          {
-                            barcodeTypes.find((t) => t.value === barcodeType)
-                              ?.label
+                          {item.product.id === "custom" 
+                            ? customBarcodeTypes.find((t) => t.value === customBarcodeType)?.label
+                            : productBarcodeTypes.find((t) => t.value === barcodeType)?.label
                           }
                         </p>
                       </div>
@@ -1419,33 +1542,21 @@ export default function BarcodeGenerator() {
           </div>
         </div>
 
-        {/* Instructions */}
+        {/* Simplified Instructions */}
         <div className="mt-6 bg-blue-50 rounded-xl p-6">
-          <h3 className="text-lg font-semibold text-blue-900 mb-2">
-            How to use Barcode Generator
+          <h3 className="text-lg font-semibold text-blue-900 mb-3">
+            Quick Guide
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
             <div>
-              <h4 className="font-medium mb-2">For Products:</h4>
-              <ul className="space-y-1">
-                <li>• Search and select products from your inventory</li>
-                <li>
-                  • Products without barcodes will get auto-generated ones
-                </li>
-                <li>• Existing barcodes will be preserved</li>
-                <li>
-                  • Click "Save to Database" to permanently store barcodes
-                </li>
-              </ul>
+              <h4 className="font-medium mb-2">📦 Products</h4>
+              <p>Select products → Choose Code 128 or QR → Generate</p>
+              <p className="text-xs mt-1">Uses existing barcode or SKU</p>
             </div>
             <div>
-              <h4 className="font-medium mb-2">For Custom Items:</h4>
-              <ul className="space-y-1">
-                <li>• Enter any text or number sequence</li>
-                <li>• Choose appropriate barcode type</li>
-                <li>• Generate instant barcode for printing</li>
-                <li>• Download as PDF, PNG, or SVG for your records</li>
-              </ul>
+              <h4 className="font-medium mb-2">🎯 Custom</h4>
+              <p>Enter code → Choose format → Generate</p>
+              <p className="text-xs mt-1">EAN-13, UPC-A, Code 39, etc.</p>
             </div>
           </div>
         </div>
@@ -1453,3 +1564,4 @@ export default function BarcodeGenerator() {
     </InventoryLayout>
   );
 }
+
