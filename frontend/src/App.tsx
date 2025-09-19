@@ -11,6 +11,9 @@ import Billing from '@/pages/Billing';
 import Customers from '@/pages/Customers';
 import Suppliers from '@/pages/Suppliers';
 import Reports from '@/pages/Reports';
+import SalesReport from '@/pages/reports/SalesReport';
+import InventoryReport from '@/pages/reports/InventoryReport';
+import TaxReport from '@/pages/reports/TaxReport';
 import BarcodeGenerator from '@/pages/BarcodeGenerator';
 import LabelPrinting from '@/pages/LabelPrinting';
 import Profile from '@/pages/Profile';
@@ -93,7 +96,7 @@ function App() {
               path="/reports/sales" 
               element={
                 <ProtectedRoute>
-                  <Reports />
+                  <SalesReport />
                 </ProtectedRoute>
               } 
             />
@@ -101,7 +104,7 @@ function App() {
               path="/reports/inventory" 
               element={
                 <ProtectedRoute>
-                  <Reports />
+                  <InventoryReport />
                 </ProtectedRoute>
               } 
             />
@@ -109,7 +112,7 @@ function App() {
               path="/reports/tax" 
               element={
                 <ProtectedRoute>
-                  <Reports />
+                  <TaxReport />
                 </ProtectedRoute>
               } 
             />
