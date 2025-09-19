@@ -16,6 +16,8 @@ import LabelPrinting from '@/pages/LabelPrinting';
 import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
+import Aboutus from './pages/Aboutus';
+import Contactus from './pages/Contactus';
 
 function App() {
   return (
@@ -27,6 +29,8 @@ function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/about" element={<Aboutus />} />
+            <Route path="/contact" element={<Contactus />} />
             
             {/* Protected routes */}
             <Route 
