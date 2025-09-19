@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { InventoryLayout } from '@/layouts';
-import { Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin, CreditCard, TrendingUp } from 'lucide-react';
+import { Users, Plus, Search, Edit, Trash2, Phone, Mail, MapPin, CreditCard, TrendingUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { apiService, type Customer as ApiCustomer } from '@/lib/api';
 
 interface Customer {
   id: string;
@@ -22,52 +23,33 @@ interface Customer {
   outstandingAmount: number;
 }
 
-export default function Customers() {
-  const [customers, setCustomers] = useState<Customer[]>([
-    {
-      id: '1',
-      name: 'John Doe',
-      email: 'john@email.com',
-      phone: '+91 9876543210',
-      address: '123 Main St, Delhi',
-      totalPurchases: 15,
-      totalAmount: 125000,
-      lastPurchase: '2024-01-20',
-      status: 'active',
-      type: 'retail',
-      creditLimit: 50000,
-      outstandingAmount: 5000
-    },
-    {
-      id: '2',
-      name: 'ABC Electronics Store',
-      email: 'abc@electronics.com',
-      phone: '+91 8765432109',
-      address: '456 Business Park, Mumbai',
-      totalPurchases: 45,
-      totalAmount: 850000,
-      lastPurchase: '2024-01-25',
-      status: 'active',
-      type: 'wholesale',
-      creditLimit: 200000,
-      outstandingAmount: 25000
-    },
-    {
-      id: '3',
-      name: 'Jane Smith',
-      email: 'jane@email.com',
-      phone: '+91 7654321098',
-      address: '789 Residential Area, Bangalore',
-      totalPurchases: 8,
-      totalAmount: 45000,
-      lastPurchase: '2024-01-18',
-      status: 'active',
-      type: 'retail',
-      creditLimit: 20000,
-      outstandingAmount: 0
-    }
-  ]);
+// Function to map API customer to our frontend customer interface
+const mapApiCustomerToCustomer = (apiCustomer: ApiCustomer): Customer => {
+  const totalAmount = apiCustomer.purchaseHistory.reduce((sum, purchase) => sum + (purchase.amount || 0), 0);
+  const lastPurchase = apiCustomer.purchaseHistory.length > 0 
+    ? new Date(Math.max(...apiCustomer.purchaseHistory.map(p => new Date(p.date).getTime()))).toISOString().split('T')[0]
+    : new Date().toISOString().split('T')[0];
 
+  return {
+    id: apiCustomer._id,
+    name: apiCustomer.name,
+    email: apiCustomer.email || '',
+    phone: apiCustomer.phone || '',
+    address: apiCustomer.address || '',
+    totalPurchases: apiCustomer.purchaseHistory.length,
+    totalAmount,
+    lastPurchase,
+    status: 'active',
+    type: apiCustomer.isDealer ? 'wholesale' : 'retail',
+    creditLimit: 50000, // Default credit limit - this should come from API
+    outstandingAmount: apiCustomer.totalDue || 0
+  };
+};
+
+export default function Customers() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'retail' | 'wholesale'>('all');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -81,6 +63,49 @@ export default function Customers() {
     creditLimit: 10000
   });
 
+  // Fetch customers from API
+  const fetchCustomers = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await apiService.getCustomers({ 
+        search: searchTerm || undefined,
+        limit: 100 // Get all customers for now
+      });
+      
+      if (response.success && response.data) {
+        const mappedCustomers = response.data.customers.map(mapApiCustomerToCustomer);
+        setCustomers(mappedCustomers);
+      } else {
+        setError('Failed to fetch customers');
+      }
+    } catch (err) {
+      console.error('Error fetching customers:', err);
+      setError('Failed to load customers. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load customers on component mount and when search term changes
+  useEffect(() => {
+    fetchCustomers();
+  }, []); // Only fetch on mount
+
+  // Debounced search effect
+  useEffect(() => {
+    if (!searchTerm) {
+      fetchCustomers();
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      fetchCustomers();
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
   const filteredCustomers = customers.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -89,38 +114,63 @@ export default function Customers() {
     return matchesSearch && matchesType;
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (editingCustomer) {
-      setCustomers(prev => prev.map(customer => 
-        customer.id === editingCustomer.id 
-          ? { ...customer, ...formData }
-          : customer
-      ));
-    } else {
-      const newCustomer: Customer = {
-        id: Date.now().toString(),
-        ...formData,
-        totalPurchases: 0,
-        totalAmount: 0,
-        lastPurchase: new Date().toISOString().split('T')[0],
-        status: 'active',
-        outstandingAmount: 0
-      };
-      setCustomers(prev => [...prev, newCustomer]);
+    try {
+      setLoading(true);
+      setError(null);
+
+      if (editingCustomer) {
+        const response = await apiService.updateCustomer(editingCustomer.id, {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          isDealer: formData.type === 'wholesale'
+        });
+
+        if (response.success) {
+          // Refresh customers list
+          await fetchCustomers();
+        } else {
+          setError('Failed to update customer');
+          return;
+        }
+      } else {
+        const response = await apiService.createCustomer({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          isDealer: formData.type === 'wholesale'
+        });
+
+        if (response.success) {
+          // Refresh customers list
+          await fetchCustomers();
+        } else {
+          setError('Failed to create customer');
+          return;
+        }
+      }
+      
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        type: 'retail',
+        creditLimit: 10000
+      });
+      setIsAddDialogOpen(false);
+      setEditingCustomer(null);
+    } catch (err) {
+      console.error('Error saving customer:', err);
+      setError('Failed to save customer. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      type: 'retail',
-      creditLimit: 10000
-    });
-    setIsAddDialogOpen(false);
-    setEditingCustomer(null);
   };
 
   const handleEdit = (customer: Customer) => {
@@ -133,12 +183,28 @@ export default function Customers() {
       type: customer.type,
       creditLimit: customer.creditLimit
     });
+    setError(null); // Clear any previous errors
     setIsAddDialogOpen(true);
   };
 
-  const handleDelete = (customerId: string) => {
+  const handleDelete = async (customerId: string) => {
     if (confirm('Are you sure you want to delete this customer?')) {
-      setCustomers(prev => prev.filter(customer => customer.id !== customerId));
+      try {
+        setLoading(true);
+        const response = await apiService.deleteCustomer(customerId);
+        
+        if (response.success) {
+          // Refresh customers list
+          await fetchCustomers();
+        } else {
+          setError('Failed to delete customer');
+        }
+      } catch (err) {
+        console.error('Error deleting customer:', err);
+        setError('Failed to delete customer. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -169,6 +235,7 @@ export default function Customers() {
                     className="bg-blue-600 hover:bg-blue-700"
                     onClick={() => {
                       setEditingCustomer(null);
+                      setError(null);
                       setFormData({
                         name: '',
                         email: '',
@@ -193,6 +260,14 @@ export default function Customers() {
                         {editingCustomer ? 'Update customer information' : 'Create a new customer profile'}
                       </DialogDescription>
                     </DialogHeader>
+                    
+                    {/* Error Display in Dialog */}
+                    {error && (
+                      <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+                        <p className="text-red-800 text-sm">{error}</p>
+                      </div>
+                    )}
+                    
                     <div className="space-y-4 py-4">
                       <div className="space-y-2">
                         <Label htmlFor="name">Customer Name</Label>
@@ -260,11 +335,18 @@ export default function Customers() {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                      <Button type="button" variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={loading}>
                         Cancel
                       </Button>
-                      <Button type="submit">
-                        {editingCustomer ? 'Update' : 'Create'}
+                      <Button type="submit" disabled={loading}>
+                        {loading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            {editingCustomer ? 'Updating...' : 'Creating...'}
+                          </>
+                        ) : (
+                          editingCustomer ? 'Update' : 'Create'
+                        )}
                       </Button>
                     </DialogFooter>
                   </form>
@@ -354,8 +436,33 @@ export default function Customers() {
           <div className="bg-white rounded-xl shadow-sm">
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-4">Customer List</h3>
-              <div className="space-y-4">
-                {filteredCustomers.map((customer) => (
+              
+              {/* Error Display */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <p className="text-red-800 text-sm">{error}</p>
+                  <Button 
+                    onClick={() => {
+                      setError(null);
+                      fetchCustomers();
+                    }}
+                    className="mt-2 bg-red-600 hover:bg-red-700 text-white"
+                    size="sm"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              )}
+
+              {/* Loading State */}
+              {loading && customers.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  <span className="ml-2 text-gray-600">Loading customers...</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {filteredCustomers.map((customer) => (
                   <div key={customer.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -427,9 +534,11 @@ export default function Customers() {
                     </div>
                   </div>
                 ))}
-              </div>
+                </div>
+              )}
 
-              {filteredCustomers.length === 0 && (
+              {/* No Customers Found State */}
+              {!loading && filteredCustomers.length === 0 && (
                 <div className="text-center py-12">
                   <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
