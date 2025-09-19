@@ -8,7 +8,8 @@ import {
   FileText,
   ArrowUpRight,
   Users,
-  ShoppingCart
+  ShoppingCart,
+  AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +29,8 @@ import {
   AreaChart,
   Area
 } from 'recharts';
+import { apiService } from '@/lib/api';
+import { useToast } from '@/hooks/useToast';
 
 interface SalesData {
   period: string;
@@ -47,37 +50,17 @@ export default function SalesReport() {
   const [selectedPeriod, setSelectedPeriod] = useState('last30days');
   const [salesData, setSalesData] = useState<SalesData[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [categorySales, setCategorySales] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState({
     totalRevenue: 0,
     totalTransactions: 0,
     averageOrderValue: 0,
+    totalDiscountGiven: 0,
     growthRate: 0
   });
-
-  // Sample data for demo - replace with API calls
-  const sampleSalesData: SalesData[] = [
-    { period: 'Jan 2024', revenue: 125000, transactions: 45, growth: 12.5 },
-    { period: 'Feb 2024', revenue: 135000, transactions: 52, growth: 8.0 },
-    { period: 'Mar 2024', revenue: 142000, transactions: 48, growth: 5.2 },
-    { period: 'Apr 2024', revenue: 158000, transactions: 65, growth: 11.3 },
-    { period: 'May 2024', revenue: 167000, transactions: 71, growth: 5.7 },
-    { period: 'Jun 2024', revenue: 181000, transactions: 78, growth: 8.4 }
-  ];
-
-  const sampleTopProducts: TopProduct[] = [
-    { name: 'iPhone 15 Pro', revenue: 285000, quantity: 15, category: 'Smartphones' },
-    { name: 'Samsung Galaxy S24', revenue: 245000, quantity: 22, category: 'Smartphones' },
-    { name: 'MacBook Air M3', revenue: 198000, quantity: 8, category: 'Laptops' },
-    { name: 'iPad Pro', revenue: 156000, quantity: 12, category: 'Tablets' },
-    { name: 'AirPods Pro', revenue: 89000, quantity: 35, category: 'Accessories' }
-  ];
-
-  const categoryData = [
-    { name: 'Smartphones', value: 45, color: '#3B82F6' },
-    { name: 'Laptops', value: 25, color: '#10B981' },
-    { name: 'Tablets', value: 15, color: '#F59E0B' },
-    { name: 'Accessories', value: 15, color: '#EF4444' }
-  ];
+  const { toast } = useToast();
 
   const periods = [
     { value: 'today', label: 'Today' },
@@ -94,32 +77,45 @@ export default function SalesReport() {
   }, [selectedPeriod]);
 
   const fetchSalesData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      // TODO: Replace with actual API calls
-      // const response = await apiService.getSalesReport(selectedPeriod);
-      
-      // Using sample data for now
-      setSalesData(sampleSalesData);
-      setTopProducts(sampleTopProducts);
-      
-      const totalRevenue = sampleSalesData.reduce((sum, item) => sum + item.revenue, 0);
-      const totalTransactions = sampleSalesData.reduce((sum, item) => sum + item.transactions, 0);
-      
-      setSummary({
-        totalRevenue,
-        totalTransactions,
-        averageOrderValue: totalRevenue / totalTransactions,
-        growthRate: 15.2
+      const response = await apiService.getSalesReport({
+        period: selectedPeriod
       });
       
+      if (response.success && response.data) {
+        const data = response.data;
+        setSalesData(data.salesData);
+        setTopProducts(data.topProducts);
+        setCategorySales(data.categorySales);
+        setSummary(data.summary);
+      } else {
+        throw new Error(response.message || 'Failed to fetch sales data');
+      }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch sales data';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        type: 'error'
+      });
       console.error('Error fetching sales data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleExport = (format: 'pdf' | 'excel') => {
     // TODO: Implement export functionality
     alert(`Exporting Sales Report as ${format.toUpperCase()}...`);
+  };
+
+  const getCategoryColor = (index: number) => {
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316'];
+    return colors[index % colors.length];
   };
 
   const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`;
@@ -142,6 +138,7 @@ export default function SalesReport() {
                 variant="outline" 
                 onClick={() => handleExport('excel')}
                 className="flex items-center gap-2"
+                disabled={loading}
               >
                 <Download className="h-4 w-4" />
                 Excel
@@ -149,6 +146,7 @@ export default function SalesReport() {
               <Button 
                 onClick={() => handleExport('pdf')}
                 className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
+                disabled={loading}
               >
                 <FileText className="h-4 w-4" />
                 PDF
@@ -157,8 +155,39 @@ export default function SalesReport() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <p className="text-red-700 font-medium">Error loading sales report</p>
+            </div>
+            <p className="text-red-600 mt-1">{error}</p>
+            <Button 
+              onClick={fetchSalesData}
+              className="mt-3 bg-red-600 hover:bg-red-700"
+              size="sm"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white rounded-xl shadow-sm p-12 mb-6">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mb-4"></div>
+              <p className="text-gray-600">Loading sales report...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Report Content - Only show when not loading */}
+        {!loading && !error && (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 rounded-lg bg-green-50">
@@ -304,7 +333,11 @@ export default function SalesReport() {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={categoryData}
+                    data={categorySales.map((cat, index) => ({
+                      name: cat.category || cat._id,
+                      value: Math.round((cat.revenue / summary.totalRevenue) * 100) || 0,
+                      color: getCategoryColor(index)
+                    }))}
                     cx="50%"
                     cy="50%"
                     labelLine={false}
@@ -313,8 +346,8 @@ export default function SalesReport() {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    {categorySales.map((_: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={getCategoryColor(index)} />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -381,6 +414,9 @@ export default function SalesReport() {
             </table>
           </div>
         </div>
+        </>
+        )}
+
       </div>
     </InventoryLayout>
   );

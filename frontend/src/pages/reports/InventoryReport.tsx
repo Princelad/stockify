@@ -30,6 +30,8 @@ import {
   Line,
   ComposedChart
 } from 'recharts';
+import { apiService } from '@/lib/api';
+import { useToast } from '@/hooks/useToast';
 
 interface InventoryItem {
   id: string;
@@ -65,84 +67,17 @@ export default function InventoryReport() {
   const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
   const [stockMovements, setStockMovements] = useState<StockMovement[]>([]);
   const [categoryStock, setCategoryStock] = useState<CategoryStock[]>([]);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState({
     totalValue: 0,
     totalItems: 0,
+    totalRetailValue: 0,
     lowStockItems: 0,
     outOfStockItems: 0
   });
-
-  // Sample data for demo
-  const sampleInventoryData: InventoryItem[] = [
-    {
-      id: '1',
-      name: 'iPhone 15 Pro',
-      sku: 'IPH15PRO001',
-      category: 'Smartphones',
-      currentStock: 15,
-      minStock: 10,
-      maxStock: 50,
-      value: 285000,
-      movement: 'high',
-      lastUpdated: '2024-01-15',
-      supplier: 'Apple Inc'
-    },
-    {
-      id: '2',
-      name: 'Samsung Galaxy S24',
-      sku: 'SAM24001',
-      category: 'Smartphones',
-      currentStock: 8,
-      minStock: 15,
-      maxStock: 40,
-      value: 196000,
-      movement: 'medium',
-      lastUpdated: '2024-01-14',
-      supplier: 'Samsung Electronics'
-    },
-    {
-      id: '3',
-      name: 'MacBook Air M3',
-      sku: 'MBA3001',
-      category: 'Laptops',
-      currentStock: 3,
-      minStock: 5,
-      maxStock: 20,
-      value: 255000,
-      movement: 'low',
-      lastUpdated: '2024-01-13',
-      supplier: 'Apple Inc'
-    },
-    {
-      id: '4',
-      name: 'Dell XPS 13',
-      sku: 'DELL13001',
-      category: 'Laptops',
-      currentStock: 0,
-      minStock: 3,
-      maxStock: 15,
-      value: 0,
-      movement: 'low',
-      lastUpdated: '2024-01-10',
-      supplier: 'Dell Technologies'
-    }
-  ];
-
-  const sampleStockMovements: StockMovement[] = [
-    { period: 'Jan 2024', inbound: 150, outbound: 120, netMovement: 30 },
-    { period: 'Feb 2024', inbound: 180, outbound: 165, netMovement: 15 },
-    { period: 'Mar 2024', inbound: 140, outbound: 155, netMovement: -15 },
-    { period: 'Apr 2024', inbound: 200, outbound: 175, netMovement: 25 },
-    { period: 'May 2024', inbound: 160, outbound: 185, netMovement: -25 },
-    { period: 'Jun 2024', inbound: 220, outbound: 190, netMovement: 30 }
-  ];
-
-  const sampleCategoryStock: CategoryStock[] = [
-    { name: 'Smartphones', value: 481000, items: 23, color: '#3B82F6' },
-    { name: 'Laptops', value: 255000, items: 3, color: '#10B981' },
-    { name: 'Tablets', value: 180000, items: 12, color: '#F59E0B' },
-    { name: 'Accessories', value: 125000, items: 45, color: '#EF4444' }
-  ];
+  const { toast } = useToast();
 
   const periods = [
     { value: 'today', label: 'Today' },
@@ -159,26 +94,56 @@ export default function InventoryReport() {
   }, [selectedPeriod]);
 
   const fetchInventoryData = async () => {
+    setLoading(true);
+    setError(null);
+    
     try {
-      // TODO: Replace with actual API calls
-      setInventoryData(sampleInventoryData);
-      setStockMovements(sampleStockMovements);
-      setCategoryStock(sampleCategoryStock);
-      
-      const totalValue = sampleInventoryData.reduce((sum, item) => sum + item.value, 0);
-      const lowStockItems = sampleInventoryData.filter(item => item.currentStock <= item.minStock && item.currentStock > 0).length;
-      const outOfStockItems = sampleInventoryData.filter(item => item.currentStock === 0).length;
-      
-      setSummary({
-        totalValue,
-        totalItems: sampleInventoryData.length,
-        lowStockItems,
-        outOfStockItems
+      const response = await apiService.getInventoryReport({
+        period: selectedPeriod
       });
       
+      if (response.success && response.data) {
+        const data = response.data;
+        setInventoryData(data.inventoryData);
+        setSummary(data.summary);
+        
+        // Transform category stock data to match component needs
+        const transformedCategoryStock = data.categoryStock.map((cat: any, index: number) => ({
+          name: cat.category || cat._id,
+          value: cat.totalValue,
+          items: cat.totalItems,
+          color: getCategoryColor(index)
+        }));
+        setCategoryStock(transformedCategoryStock);
+        
+        // Transform stock movements data
+        const transformedMovements = data.stockMovements.map((movement: any) => ({
+          period: movement._id,
+          inbound: 0, // This would come from purchase data in a complete system
+          outbound: movement.totalOutbound,
+          netMovement: -movement.totalOutbound // Negative because we're only tracking outbound
+        }));
+        setStockMovements(transformedMovements);
+      } else {
+        throw new Error(response.message || 'Failed to fetch inventory data');
+      }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch inventory data';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        type: 'error'
+      });
       console.error('Error fetching inventory data:', error);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const getCategoryColor = (index: number) => {
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316'];
+    return colors[index % colors.length];
   };
 
   const handleExport = (format: 'pdf' | 'excel') => {
@@ -220,6 +185,7 @@ export default function InventoryReport() {
                 variant="outline" 
                 onClick={() => handleExport('excel')}
                 className="flex items-center gap-2"
+                disabled={loading}
               >
                 <Download className="h-4 w-4" />
                 Excel
@@ -227,6 +193,7 @@ export default function InventoryReport() {
               <Button 
                 onClick={() => handleExport('pdf')}
                 className="bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                disabled={loading}
               >
                 <FileText className="h-4 w-4" />
                 PDF
@@ -235,8 +202,39 @@ export default function InventoryReport() {
           </div>
         </div>
 
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <p className="text-red-700 font-medium">Error loading inventory report</p>
+            </div>
+            <p className="text-red-600 mt-1">{error}</p>
+            <Button 
+              onClick={fetchInventoryData}
+              className="mt-3 bg-red-600 hover:bg-red-700"
+              size="sm"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="bg-white rounded-xl shadow-sm p-12 mb-6">
+            <div className="flex flex-col items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-4"></div>
+              <p className="text-gray-600">Loading inventory report...</p>
+            </div>
+          </div>
+        )}
+
+        {/* Report Content - Only show when not loading */}
+        {!loading && !error && (
+          <>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
           <div className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="p-3 rounded-lg bg-blue-50">
@@ -495,6 +493,9 @@ export default function InventoryReport() {
             </table>
           </div>
         </div>
+        </>
+        )}
+
       </div>
     </InventoryLayout>
   );
