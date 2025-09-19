@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { InventoryLayout } from '@/layouts';
 import { SummaryCards } from '@/components/inventory/SummaryCards';
 import { LowStockAlert } from '@/components/inventory/LowStockAlert';
+import { SalesChart } from '@/components/charts/SalesChart';
+import { RevenueMiniChart, OrdersMiniChart, ConversionMiniChart } from '@/components/charts/MiniAnalytics';
 import { Home, TrendingUp, Package, Users, Clock } from 'lucide-react';
 import { apiService } from '@/lib/api';
 
@@ -228,23 +230,16 @@ export default function Dashboard() {
                 <p className="text-xs text-purple-600 mt-2">Registered today</p>
               </div>
             </div>
+
+            {/* Mini Analytics Charts */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+              <RevenueMiniChart />
+              <OrdersMiniChart />
+              <ConversionMiniChart />
+            </div>
             
             {/* Business Overview Chart */}
-            <div className="bg-white rounded-xl shadow-sm p-6 mt-6 min-h-[260px]">
-              <div className="font-semibold mb-2">Sales Overview</div>
-              <div className="flex gap-4 mb-4">
-                <button className="px-3 py-1 rounded bg-blue-50 text-blue-700 font-medium">Last 7 Days</button>
-                <button className="px-3 py-1 rounded hover:bg-gray-100">Last 30 Days</button>
-                <button className="px-3 py-1 rounded hover:bg-gray-100">Last Year</button>
-              </div>
-              <div className="h-40 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
-                <div className="text-center">
-                  <div className="text-2xl mb-2">📊</div>
-                  <div>Sales Chart Coming Soon</div>
-                  <div className="text-xs text-gray-400">Business analytics visualization will be implemented here</div>
-                </div>
-              </div>
-            </div>
+            <SalesChart className="mt-6" />
           </div>
           <LowStockAlert />
         </div>
