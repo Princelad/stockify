@@ -5,7 +5,11 @@ const cors = require("cors");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
 
+// Load environment variables first
 dotenv.config();
+
+// Import database connection
+const ConnectDb = require("./config/database");
 
 // Import passport configuration
 require("./config/passport");
@@ -108,11 +112,11 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/sales", salesRoutes);
 app.use("/api/customers", customerRoutes);
 
-// Database connection
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(async () => {
-    console.log("✅ MongoDB connected successfully");
+// Database connection and server startup
+const startServer = async () => {
+  try {
+    // Connect to database
+    await ConnectDb();
 
     // Seed default categories
     const {
@@ -133,11 +137,14 @@ mongoose
       );
       console.log(`🏷️ Categories API: http://localhost:${port}/api/categories`);
     });
-  })
-  .catch((err) => {
-    console.error("❌ MongoDB connection failed:", err.message);
+  } catch (err) {
+    console.error("❌ Failed to start server:", err.message);
     process.exit(1);
-  });
+  }
+};
+
+// Start the server
+startServer();
 
 // Error handling middleware
 app.use((err, req, res, next) => {
