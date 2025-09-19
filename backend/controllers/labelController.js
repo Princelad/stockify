@@ -377,12 +377,12 @@ const generateLabels = async (req, res) => {
         let labelData = [];
 
         if (products && products.length > 0) {
-            // Product labels
+            // Product labels - Include barcode field in selection
             const productData = await Product.find({
                 _id: { $in: products },
                 createdBy: req.user._id,
                 isActive: true
-            }).select('name sku sellingPrice wholesalePrice category currentStock supplier');
+            }).select('name sku sellingPrice wholesalePrice category currentStock supplier barcode');
 
             if (productData.length === 0) {
                 return res.status(404).json({
@@ -414,7 +414,7 @@ const generateLabels = async (req, res) => {
                                 labelContent.category = product.category || 'Uncategorized';
                                 break;
                             case 'barcode':
-                                labelContent.barcode = product.sku; // Use SKU as barcode
+                                labelContent.barcode = product.barcode || product.sku; // Use product barcode or fallback to SKU
                                 break;
                             case 'stock':
                                 labelContent.stock = product.currentStock || 0;
@@ -553,12 +553,12 @@ const generateLabelPDF = async (req, res) => {
         let labelData = [];
 
         if (products && products.length > 0) {
-            // Product labels
+            // Product labels - Include barcode field in selection
             const productData = await Product.find({
                 _id: { $in: products },
                 createdBy: req.user._id,
                 isActive: true
-            }).select('name sku sellingPrice wholesalePrice category currentStock supplier');
+            }).select('name sku sellingPrice wholesalePrice category currentStock supplier barcode');
 
             if (productData.length === 0) {
                 return res.status(404).json({
@@ -590,7 +590,7 @@ const generateLabelPDF = async (req, res) => {
                                 labelContent.category = product.category || 'Uncategorized';
                                 break;
                             case 'barcode':
-                                labelContent.barcode = product.sku; // Use SKU as barcode
+                                labelContent.barcode = product.barcode || product.sku; // Use product barcode or fallback to SKU
                                 break;
                             case 'stock':
                                 labelContent.stock = product.currentStock || 0;

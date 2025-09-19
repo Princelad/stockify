@@ -317,12 +317,14 @@ export default function LabelPrinting() {
             {currentTemplate.fields.includes('category') && (
               <Badge className="text-xs">{product.category}</Badge>
             )}
-            {currentTemplate.fields.includes('barcode') && product.sku && (
+            {currentTemplate.fields.includes('barcode') && (product.sku || product.barcode) && (
               <div className="mt-2">
-                <div className="h-4 bg-gray-900 mx-auto max-w-20 text-white text-xs flex items-center justify-center">
-                  ||||
+                <div className="h-4 bg-gray-900 mx-auto max-w-20 flex items-center justify-center">
+                  <span className="font-mono text-xs tracking-wider text-white">||||||||</span>
                 </div>
-                <p className="text-xs font-mono mt-1">{product.sku.slice(-8)}</p>
+                <p className="text-xs font-mono mt-1 text-gray-600">
+                  {(product.barcode || product.sku).slice(-8)}
+                </p>
               </div>
             )}
           </div>
