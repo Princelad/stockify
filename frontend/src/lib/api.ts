@@ -139,6 +139,37 @@ export interface UpdateUserRequest {
   avatar?: string;
 }
 
+// Label printing types
+export interface LabelTemplate {
+  id: string;
+  name: string;
+  size: string;
+  fields: string[];
+  layout: 'single' | 'grid';
+  isDefault?: boolean;
+  isCustom?: boolean;
+  settings?: {
+    fontSize?: number;
+    fontFamily?: string;
+    backgroundColor?: string;
+    textColor?: string;
+    showBorder?: boolean;
+    borderColor?: string;
+    padding?: number;
+    alignment?: 'left' | 'center' | 'right';
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface LabelData {
+  type: 'product' | 'custom';
+  productId?: string;
+  productName?: string;
+  content: Record<string, any>;
+  template: LabelTemplate;
+}
+
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
@@ -476,6 +507,100 @@ class ApiService {
     return this.request(`/products?search=${encodeURIComponent(query)}&limit=10&includeStock=true`, {
       method: 'GET',
     });
+  }
+
+  // =====================================================
+  // LABEL PRINTING API METHODS
+  // =====================================================
+
+  async getLabelTemplates(): Promise<ApiResponse<{
+    templates: LabelTemplate[];
+    defaultCount: number;
+    customCount: number;
+  }>> {
+    return this.request('/labels/templates', {
+      method: 'GET',
+    });
+  }
+
+  async createLabelTemplate(templateData: {
+    name: string;
+    size: string;
+    fields: string[];
+    layout: 'single' | 'grid';
+    settings?: Record<string, any>;
+  }): Promise<ApiResponse<{ template: LabelTemplate }>> {
+    return this.request('/labels/templates', {
+      method: 'POST',
+      body: JSON.stringify(templateData),
+    });
+  }
+
+  async updateLabelTemplate(id: string, templateData: {
+    name?: string;
+    size?: string;
+    fields?: string[];
+    layout?: 'single' | 'grid';
+    settings?: Record<string, any>;
+  }): Promise<ApiResponse<{ template: LabelTemplate }>> {
+    return this.request(`/labels/templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(templateData),
+    });
+  }
+
+  async deleteLabelTemplate(id: string): Promise<ApiResponse> {
+    return this.request(`/labels/templates/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async generateLabels(labelData: {
+    templateId: string;
+    products?: string[];
+    customText?: string;
+    quantity?: number;
+  }): Promise<ApiResponse<{
+    labels: LabelData[];
+    template: LabelTemplate;
+    totalLabels: number;
+    summary: {
+      templateName: string;
+      templateSize: string;
+      labelCount: number;
+      productsCount: number;
+      customLabelsCount: number;
+    };
+  }>> {
+    return this.request('/labels/generate', {
+      method: 'POST',
+      body: JSON.stringify(labelData),
+    });
+  }
+
+  async generateLabelPDF(labelData: {
+    templateId: string;
+    products?: string[];
+    customText?: string;
+    quantity?: number;
+    options?: Record<string, any>;
+  }): Promise<Blob> {
+    const response = await fetch(`${this.baseURL}/labels/pdf`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+      },
+      credentials: 'include',
+      body: JSON.stringify(labelData),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to generate PDF');
+    }
+
+    return response.blob();
   }
 
   // Helper methods for token management

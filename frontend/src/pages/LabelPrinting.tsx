@@ -1,28 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { InventoryLayout } from '@/layouts';
-import { Printer, Settings, Download, Package, Tag, Edit3, Copy, Grid3X3 } from 'lucide-react';
+import { Printer, Settings, Download, Package, Tag, Edit3, Copy, Grid3X3, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-
-interface LabelTemplate {
-  id: string;
-  name: string;
-  size: string;
-  fields: string[];
-  layout: 'single' | 'grid';
-}
-
-interface Product {
-  id: string;
-  name: string;
-  sku: string;
-  price: number;
-  category: string;
-  barcode?: string;
-}
+import { apiService, type LabelTemplate, type ProductsResponse } from '@/lib/api';
+import { useToast } from '@/hooks/useToast';
+import type { Product } from '@/types/product';
 
 export default function LabelPrinting() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('template1');
@@ -31,91 +17,285 @@ export default function LabelPrinting() {
   const [labelQuantity, setLabelQuantity] = useState(1);
   const [previewMode, setPreviewMode] = useState<'product' | 'custom'>('product');
 
-  const templates: LabelTemplate[] = [
-    {
-      id: 'template1',
-      name: 'Standard Product Label',
-      size: '2" x 1"',
-      fields: ['name', 'price', 'barcode'],
-      layout: 'single'
-    },
-    {
-      id: 'template2',
-      name: 'Detailed Product Label',
-      size: '3" x 2"',
-      fields: ['name', 'sku', 'price', 'category', 'barcode'],
-      layout: 'single'
-    },
-    {
-      id: 'template3',
-      name: 'Price Tag Only',
-      size: '1.5" x 1"',
-      fields: ['name', 'price'],
-      layout: 'grid'
-    },
-    {
-      id: 'template4',
-      name: 'Barcode Label',
-      size: '2" x 0.75"',
-      fields: ['name', 'sku', 'barcode'],
-      layout: 'single'
-    }
-  ];
+  // Backend data state
+  const [templates, setTemplates] = useState<LabelTemplate[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const products: Product[] = [
-    {
-      id: '1',
-      name: 'iPhone 13',
-      sku: 'IPH-13-128',
-      price: 45000,
-      category: 'Electronics',
-      barcode: '123456789012'
-    },
-    {
-      id: '2',
-      name: 'Samsung Galaxy S21',
-      sku: 'SAM-S21-256',
-      price: 35000,
-      category: 'Electronics',
-      barcode: '234567890123'
-    },
-    {
-      id: '3',
-      name: 'OnePlus 9',
-      sku: 'OPL-09-128',
-      price: 30000,
-      category: 'Electronics',
-      barcode: '345678901234'
+  const { toast } = useToast();
+  
+  const showToast = (title: string, message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    toast({
+      title,
+      description: message,
+      type,
+    });
+  };
+
+  // Test function to generate a simple custom label
+  const testLabelGeneration = async () => {
+    try {
+      setIsGenerating(true);
+      console.log('Testing label generation...');
+      
+      const pdfBlob = await apiService.generateLabelPDF({
+        templateId: 'template3', // Price Tag Only template
+        customText: 'Test Label - Hello World!',
+        quantity: 1
+      });
+
+      console.log('Test PDF generated, size:', pdfBlob.size);
+      
+      // Download the test PDF
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `test-label-${Date.now()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showToast('Success', 'Test label generated successfully!', 'success');
+    } catch (error) {
+      console.error('Test label generation failed:', error);
+      showToast('Error', `Test failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+    } finally {
+      setIsGenerating(false);
     }
-  ];
+  };
+
+  // Load templates and products on component mount
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  const loadInitialData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load templates and products in parallel
+      const [templatesResponse, productsResponse] = await Promise.all([
+        apiService.getLabelTemplates(),
+        apiService.getProducts({ limit: 50 }) // Limit for label printing selection
+      ]);
+
+      if (templatesResponse.success && templatesResponse.data) {
+        setTemplates(templatesResponse.data.templates);
+      }
+
+      if (productsResponse.success && productsResponse.data) {
+        setProducts(productsResponse.data.products);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
+      setError(errorMessage);
+      showToast('Error loading data', errorMessage, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const currentTemplate = templates.find(t => t.id === selectedTemplate);
 
   const addProduct = (product: Product) => {
-    if (!selectedProducts.find(p => p.id === product.id)) {
+    if (!selectedProducts.find(p => p._id === product._id)) {
       setSelectedProducts(prev => [...prev, product]);
     }
   };
 
   const removeProduct = (productId: string) => {
-    setSelectedProducts(prev => prev.filter(p => p.id !== productId));
+    setSelectedProducts(prev => prev.filter(p => p._id !== productId));
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (previewMode === 'product' && selectedProducts.length === 0) {
-      alert('Please select products to print labels');
+      showToast('Error', 'Please select products to print labels', 'error');
       return;
     }
     if (previewMode === 'custom' && !customText) {
-      alert('Please enter custom text for labels');
+      showToast('Error', 'Please enter custom text for labels', 'error');
       return;
     }
     
-    alert(`Printing ${labelQuantity} label(s) using ${currentTemplate?.name}...`);
+    try {
+      setIsGenerating(true);
+      console.log('Generating PDF with:', {
+        templateId: selectedTemplate,
+        products: previewMode === 'product' ? selectedProducts.map(p => p._id) : undefined,
+        customText: previewMode === 'custom' ? customText : undefined,
+        quantity: labelQuantity
+      });
+      
+      // Generate PDF for printing
+      const pdfBlob = await apiService.generateLabelPDF({
+        templateId: selectedTemplate,
+        products: previewMode === 'product' ? selectedProducts.map(p => p._id) : undefined,
+        customText: previewMode === 'custom' ? customText : undefined,
+        quantity: labelQuantity
+      });
+
+      console.log('PDF generated successfully, blob size:', pdfBlob.size);
+
+      // Create and open PDF in new window for printing
+      const url = URL.createObjectURL(pdfBlob);
+      
+      try {
+        // Try to open in new window first
+        const printWindow = window.open('', '_blank');
+        
+        if (printWindow) {
+          // Write a simple HTML page that loads and prints the PDF
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Print Labels</title>
+              <style>
+                body { margin: 0; padding: 0; }
+                iframe { width: 100%; height: 100vh; border: none; }
+                .print-info { 
+                  position: fixed; 
+                  top: 10px; 
+                  left: 10px; 
+                  background: #f0f0f0; 
+                  padding: 10px; 
+                  border-radius: 5px;
+                  z-index: 1000;
+                }
+              </style>
+            </head>
+            <body>
+              <div class="print-info">
+                <strong>Labels ready to print!</strong><br>
+                Use Ctrl+P or Cmd+P to print, or use the browser's print button.
+              </div>
+              <iframe src="${url}" onload="setTimeout(() => window.print(), 1500)"></iframe>
+            </body>
+            </html>
+          `);
+          printWindow.document.close();
+          
+          showToast('Success', 'Print window opened - print dialog should appear shortly', 'success');
+          
+          // Clean up URL after some time
+          setTimeout(() => URL.revokeObjectURL(url), 30000);
+        } else {
+          throw new Error('Popup blocked');
+        }
+      } catch (error) {
+        // Fallback: download the PDF if popup was blocked
+        console.log('Popup blocked, falling back to download');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `labels-print-${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Info', 'PDF downloaded for printing (popup was blocked)', 'info');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to print labels';
+      showToast('Error', errorMessage, 'error');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleExport = (format: 'pdf' | 'png') => {
-    alert(`Exporting labels as ${format.toUpperCase()}...`);
+  const handlePrintPreview = async () => {
+    if (previewMode === 'product' && selectedProducts.length === 0) {
+      showToast('Error', 'Please select products to preview labels', 'error');
+      return;
+    }
+    if (previewMode === 'custom' && !customText) {
+      showToast('Error', 'Please enter custom text for labels', 'error');
+      return;
+    }
+
+    try {
+      setIsGenerating(true);
+      console.log('Generating print preview...');
+      
+      const pdfBlob = await apiService.generateLabelPDF({
+        templateId: selectedTemplate,
+        products: previewMode === 'product' ? selectedProducts.map(p => p._id) : undefined,
+        customText: previewMode === 'custom' ? customText : undefined,
+        quantity: labelQuantity
+      });
+
+      // Open PDF in new tab for preview and printing
+      const url = URL.createObjectURL(pdfBlob);
+      const newTab = window.open(url, '_blank');
+      
+      if (newTab) {
+        showToast('Success', 'Print preview opened in new tab', 'success');
+        // Clean up URL after some time
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } else {
+        showToast('Error', 'Popup blocked. Please allow popups and try again.', 'error');
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to open print preview';
+      showToast('Error', errorMessage, 'error');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleExport = async (format: 'pdf' | 'png') => {
+    if (previewMode === 'product' && selectedProducts.length === 0) {
+      showToast('Error', 'Please select products to export labels', 'error');
+      return;
+    }
+    if (previewMode === 'custom' && !customText) {
+      showToast('Error', 'Please enter custom text for labels', 'error');
+      return;
+    }
+
+    try {
+      setIsGenerating(true);
+      
+      if (format === 'pdf') {
+        console.log('Exporting PDF with:', {
+          templateId: selectedTemplate,
+          products: previewMode === 'product' ? selectedProducts.map(p => p._id) : undefined,
+          customText: previewMode === 'custom' ? customText : undefined,
+          quantity: labelQuantity
+        });
+        
+        const pdfBlob = await apiService.generateLabelPDF({
+          templateId: selectedTemplate,
+          products: previewMode === 'product' ? selectedProducts.map(p => p._id) : undefined,
+          customText: previewMode === 'custom' ? customText : undefined,
+          quantity: labelQuantity
+        });
+
+        console.log('PDF exported successfully, blob size:', pdfBlob.size);
+
+        // Download PDF
+        const url = URL.createObjectURL(pdfBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `labels-${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast('Success', 'PDF exported successfully', 'success');
+      } else {
+        showToast('Info', 'PNG export feature coming soon', 'info');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to export labels';
+      showToast('Error', errorMessage, 'error');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const renderLabelPreview = (product?: Product, customContent?: string) => {
@@ -132,17 +312,17 @@ export default function LabelPrinting() {
               <p className="text-xs text-gray-600">SKU: {product.sku}</p>
             )}
             {currentTemplate.fields.includes('price') && (
-              <p className="font-bold text-green-600">₹{product.price.toLocaleString()}</p>
+              <p className="font-bold text-green-600">₹{product.sellingPrice.toLocaleString()}</p>
             )}
             {currentTemplate.fields.includes('category') && (
               <Badge className="text-xs">{product.category}</Badge>
             )}
-            {currentTemplate.fields.includes('barcode') && product.barcode && (
+            {currentTemplate.fields.includes('barcode') && product.sku && (
               <div className="mt-2">
                 <div className="h-4 bg-gray-900 mx-auto max-w-20 text-white text-xs flex items-center justify-center">
                   ||||
                 </div>
-                <p className="text-xs font-mono mt-1">{product.barcode.slice(-8)}</p>
+                <p className="text-xs font-mono mt-1">{product.sku.slice(-8)}</p>
               </div>
             )}
           </div>
@@ -174,21 +354,84 @@ export default function LabelPrinting() {
                 <p className="text-gray-600 mt-1">Create and print custom labels for your products</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => handleExport('png')}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export PNG
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleExport('pdf')}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  Export PDF
                 </Button>
-                <Button onClick={handlePrint}>
-                  <Printer className="h-4 w-4 mr-2" />
+                <Button 
+                  onClick={handlePrint}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Printer className="h-4 w-4 mr-2" />
+                  )}
                   Print Labels
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => handlePrintPreview()}
+                  disabled={isGenerating}
+                  className="ml-2"
+                >
+                  Print Preview
+                </Button>
+                <Button 
+                  variant="secondary"
+                  onClick={testLabelGeneration}
+                  disabled={isGenerating}
+                  className="ml-2"
+                >
+                  Test PDF
                 </Button>
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left Column - Settings */}
-            <div className="space-y-6">
+          {/* Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+                <p className="text-gray-600">Loading templates and products...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && !loading && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+              <div className="flex items-center gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <div>
+                  <h3 className="font-medium text-red-900">Error Loading Data</h3>
+                  <p className="text-red-700 text-sm mt-1">{error}</p>
+                </div>
+              </div>
+              <Button 
+                variant="outline" 
+                className="mt-4" 
+                onClick={loadInitialData}
+              >
+                Try Again
+              </Button>
+            </div>
+          )}
+
+          {/* Main Content */}
+          {!loading && !error && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Settings */}
+              <div className="space-y-6">
               {/* Template Selection */}
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
@@ -294,20 +537,20 @@ export default function LabelPrinting() {
                 <div className="space-y-3 mb-6">
                   {products.map((product) => (
                     <div
-                      key={product.id}
+                      key={product._id}
                       className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex-1">
                         <p className="font-medium">{product.name}</p>
                         <div className="flex items-center gap-2 mt-1">
-                          <p className="text-sm text-gray-600">₹{product.price.toLocaleString()}</p>
+                          <p className="text-sm text-gray-600">₹{product.sellingPrice.toLocaleString()}</p>
                           <Badge className="text-xs">{product.category}</Badge>
                         </div>
                       </div>
                       <Button
                         size="sm"
                         onClick={() => addProduct(product)}
-                        disabled={selectedProducts.some(p => p.id === product.id)}
+                        disabled={selectedProducts.some(p => p._id === product._id)}
                       >
                         Add
                       </Button>
@@ -322,7 +565,7 @@ export default function LabelPrinting() {
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                       {selectedProducts.map((product) => (
                         <div
-                          key={product.id}
+                          key={product._id}
                           className="flex items-center justify-between p-2 bg-blue-50 rounded-lg"
                         >
                           <span className="text-sm font-medium">{product.name}</span>
@@ -331,7 +574,7 @@ export default function LabelPrinting() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => removeProduct(product.id)}
+                              onClick={() => removeProduct(product._id)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               Remove
@@ -370,7 +613,7 @@ export default function LabelPrinting() {
                     selectedProducts.length > 0 ? (
                       <div className="space-y-4">
                         {selectedProducts.slice(0, 3).map((product) => (
-                          <div key={product.id} className="space-y-2">
+                          <div key={product._id} className="space-y-2">
                             {Array.from({ length: Math.min(labelQuantity, 3) }, (_, i) => (
                               <div key={i}>
                                 {renderLabelPreview(product)}
@@ -438,29 +681,40 @@ export default function LabelPrinting() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Instructions */}
-          <div className="mt-6 bg-blue-50 rounded-xl p-6">
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">Label Printing Tips</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
-              <div>
-                <h4 className="font-medium mb-2">For best results:</h4>
-                <ul className="space-y-1">
-                  <li>• Use appropriate label size for your printer</li>
-                  <li>• Check printer settings match template size</li>
-                  <li>• Test print on regular paper first</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2">Label types:</h4>
-                <ul className="space-y-1">
-                  <li>• Product labels: Include name, price, barcode</li>
-                  <li>• Price tags: Quick pricing labels</li>
-                  <li>• Custom labels: Any text or information</li>
-                </ul>
+          {!loading && !error && (
+            <div className="mt-6 bg-blue-50 rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">Label Printing Tips</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-800">
+                <div>
+                  <h4 className="font-medium mb-2">Printing Options:</h4>
+                  <ul className="space-y-1">
+                    <li>• <strong>Print Labels:</strong> Direct print with auto-dialog</li>
+                    <li>• <strong>Print Preview:</strong> Opens PDF in new tab</li>
+                    <li>• <strong>Export PDF:</strong> Downloads file for later</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">For best results:</h4>
+                  <ul className="space-y-1">
+                    <li>• Use appropriate label size for your printer</li>
+                    <li>• Check printer settings match template size</li>
+                    <li>• Test print on regular paper first</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-2">Label types:</h4>
+                  <ul className="space-y-1">
+                    <li>• Product labels: Include name, price, barcode</li>
+                    <li>• Price tags: Quick pricing labels</li>
+                    <li>• Custom labels: Any text or information</li>
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
     </InventoryLayout>
   );
