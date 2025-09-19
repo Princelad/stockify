@@ -603,6 +603,97 @@ class ApiService {
     return response.blob();
   }
 
+  // =====================================================
+  // REPORTS API METHODS
+  // =====================================================
+
+  async getInventoryReport(params?: {
+    period?: string;
+    category?: string;
+    supplier?: string;
+    lowStock?: boolean;
+    outOfStock?: boolean;
+  }): Promise<ApiResponse<{
+    inventoryData: any[];
+    summary: {
+      totalItems: number;
+      totalValue: number;
+      totalRetailValue: number;
+      lowStockItems: number;
+      outOfStockItems: number;
+    };
+    categoryStock: any[];
+    stockMovements: any[];
+    supplierAnalysis: any[];
+    period: string;
+  }>> {
+    const query = params ? `?${new URLSearchParams(
+      Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => [key, String(value)])
+    ).toString()}` : '';
+    
+    return this.request(`/reports/inventory${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async getSalesReport(params?: {
+    period?: string;
+    customer?: string;
+    paymentMethod?: string;
+    category?: string;
+  }): Promise<ApiResponse<{
+    salesData: any[];
+    topProducts: any[];
+    categorySales: any[];
+    summary: {
+      totalRevenue: number;
+      totalTransactions: number;
+      averageOrderValue: number;
+      totalDiscountGiven: number;
+      growthRate: number;
+    };
+    period: string;
+  }>> {
+    const query = params ? `?${new URLSearchParams(
+      Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => [key, String(value)])
+    ).toString()}` : '';
+    
+    return this.request(`/reports/sales${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async getTaxReport(params?: {
+    period?: string;
+    gstRate?: string;
+  }): Promise<ApiResponse<{
+    taxData: any[];
+    gstRates: any[];
+    taxReturns: any[];
+    summary: {
+      totalTaxCollected: number;
+      totalTaxableAmount: number;
+      totalTransactions: number;
+      pendingReturns: number;
+      complianceScore: number;
+    };
+    period: string;
+  }>> {
+    const query = params ? `?${new URLSearchParams(
+      Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== null)
+        .map(([key, value]) => [key, String(value)])
+    ).toString()}` : '';
+    
+    return this.request(`/reports/tax${query}`, {
+      method: 'GET',
+    });
+  }
+
   // Helper methods for token management
   saveAuthData(token: string, user: User): void {
     localStorage.setItem('authToken', token);

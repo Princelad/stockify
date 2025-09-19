@@ -24,6 +24,7 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const salesRoutes = require("./routes/sales");
 const customerRoutes = require("./routes/customers");
 const labelRoutes = require("./routes/labels");
+const reportRoutes = require("./routes/reports");
 
 // Middleware
 app.use(express.json());
@@ -101,6 +102,7 @@ app.get("/", (req, res) => {
       customers: "/api/customers",
       categories: "/api/categories",
       labels: "/api/labels",
+      reports: "/api/reports",
       health: "/",
       documentation: "/api/products/test/routes",
     },
@@ -114,6 +116,7 @@ app.use("/api/categories", categoryRoutes);
 app.use("/api/sales", salesRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/labels", labelRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Database connection and server startup
 const startServer = async () => {

@@ -22,7 +22,8 @@ import {
   UserPlus,
   PackagePlus,
   Receipt,
-  Zap
+  Zap,
+  Truck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getCurrentUser, clearAuthData } from '@/lib/api';
@@ -68,7 +69,7 @@ const navItems: NavItem[] = [
   },
   { label: 'Billing', icon: FileText, route: '/billing' },
   { label: 'Customers', icon: Users, route: '/customers' },
-  { label: 'Suppliers', icon: Users, route: '/suppliers' },
+  { label: 'Suppliers', icon: Truck, route: '/suppliers' },
   { 
     label: 'Reports', 
     icon: BarChart3, 
@@ -239,7 +240,7 @@ const Sidebar: React.FC<{
                 activeSection === item.label 
                   ? 'bg-blue-50 text-blue-700 font-semibold' 
                   : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600',
-                !shouldShowText && 'justify-center'
+                !shouldShowText ? 'justify-center' : undefined
               )}
               onClick={() => {
                 if (item.children) {
@@ -604,7 +605,7 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
         "flex-1 flex flex-col transition-all duration-300 ease-in-out h-screen",
         // Adjust margin for desktop collapsed sidebar
         "lg:ml-0",
-        !isCollapsed && "lg:ml-0" // Sidebar is already in flow on desktop
+        !isCollapsed ? "lg:ml-0" : undefined // Sidebar is already in flow on desktop
       )}>
         {/* Top Navigation */}
         <Topbar 
