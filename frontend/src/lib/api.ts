@@ -127,6 +127,8 @@ export interface User {
   name: string;
   email: string;
   role: string;
+  phone?: string;
+  bio?: string;
   avatar?: string;
   lastLogin?: string;
   createdAt?: string;
@@ -136,6 +138,8 @@ export interface User {
 export interface UpdateUserRequest {
   name?: string;
   email?: string;
+  phone?: string;
+  bio?: string;
   avatar?: string;
 }
 
@@ -173,7 +177,6 @@ export interface LabelData {
 export interface ChangePasswordRequest {
   currentPassword: string;
   newPassword: string;
-  confirmPassword: string;
 }
 
 export interface LoginRequest {
@@ -285,10 +288,35 @@ class ApiService {
     const formData = new FormData();
     formData.append('avatar', file);
 
-    return this.request('/users/upload-avatar', {
+    return this.request('/users/avatar', {
       method: 'POST',
       body: formData,
       headers: {}, // Remove Content-Type header to let browser set it with boundary
+    });
+  }
+
+  async getUserStats(): Promise<ApiResponse> {
+    return this.request('/users/stats', {
+      method: 'GET',
+    });
+  }
+
+  async getUserActivity(): Promise<ApiResponse> {
+    return this.request('/users/activity', {
+      method: 'GET',
+    });
+  }
+
+  async getUserPreferences(): Promise<ApiResponse> {
+    return this.request('/users/preferences', {
+      method: 'GET',
+    });
+  }
+
+  async updateUserPreferences(preferences: any): Promise<ApiResponse> {
+    return this.request('/users/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
     });
   }
 
@@ -690,6 +718,12 @@ class ApiService {
     ).toString()}` : '';
     
     return this.request(`/reports/tax${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async exportUserData(): Promise<ApiResponse> {
+    return this.request('/users/export', {
       method: 'GET',
     });
   }

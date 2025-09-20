@@ -4,9 +4,30 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
+const path = require("path");
+const fs = require("fs");
 
 // Load environment variables first
 dotenv.config();
+
+// Ensure upload directories exist
+const createUploadDirs = () => {
+  const uploadDirs = [
+    'uploads',
+    'uploads/avatars',
+    'uploads/pdfs',
+    'uploads/labels'
+  ];
+
+  uploadDirs.forEach(dir => {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+      console.log(`✅ Created directory: ${dir}`);
+    }
+  });
+};
+
+createUploadDirs();
 
 // Import database connection
 const ConnectDb = require("./config/database");
@@ -25,6 +46,7 @@ const salesRoutes = require("./routes/sales");
 const customerRoutes = require("./routes/customers");
 const labelRoutes = require("./routes/labels");
 const reportRoutes = require("./routes/reports");
+const userRoutes = require("./routes/users");
 
 // Middleware
 app.use(express.json());
@@ -57,6 +79,9 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: true }));
+
+// Serve static files for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Session configuration
 app.use(
@@ -103,6 +128,7 @@ app.get("/", (req, res) => {
       categories: "/api/categories",
       labels: "/api/labels",
       reports: "/api/reports",
+      users: "/api/users",
       health: "/",
       documentation: "/api/products/test/routes",
     },
@@ -117,6 +143,7 @@ app.use("/api/sales", salesRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/labels", labelRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/users", userRoutes);
 
 // Database connection and server startup
 const startServer = async () => {
