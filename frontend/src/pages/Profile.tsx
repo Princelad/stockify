@@ -109,6 +109,20 @@ export default function Profile() {
     }
   }, [user]);
 
+  // Load fresh user data on component mount
+  useEffect(() => {
+    const loadFreshData = async () => {
+      try {
+        // Always refresh user data when profile page loads
+        await refreshUser();
+      } catch (error) {
+        console.error('Failed to load fresh user data:', error);
+      }
+    };
+    
+    loadFreshData();
+  }, []); // Run once on mount
+
   const loadUserData = async () => {
     setLoading(true);
     try {
@@ -141,14 +155,46 @@ export default function Profile() {
   const loadUserStats = async () => {
     setStatsLoading(true);
     try {
+      // Check cache first (cache for 5 minutes)
+      const cacheKey = `userStats_${user?.id}`;
+      const cachedStats = localStorage.getItem(cacheKey);
+      const cacheTime = localStorage.getItem(`${cacheKey}_time`);
+      
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+      
+      if (cachedStats && cacheTime && (now - parseInt(cacheTime) < fiveMinutes)) {
+        // Use cached data
+        const stats = JSON.parse(cachedStats);
+        setUserStats({
+          ...stats,
+          lastActivity: user?.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
+          joinDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown',
+          completionRate: calculateProfileCompletion()
+        });
+        setStatsLoading(false);
+        return;
+      }
+
+      // Fetch fresh data from API
       const response = await apiService.getUserStats();
       if (response.success && response.data) {
         const stats = response.data;
-        setUserStats({
+        const newStats = {
           productsAdded: stats.productsAdded || 0,
           totalSales: stats.totalSales || 0,
           salesThisMonth: stats.salesThisMonth || 0,
           productsViewed: stats.productsViewed || 0,
+          totalTransactions: stats.totalTransactions || 0,
+          transactionsThisMonth: stats.transactionsThisMonth || 0
+        };
+        
+        // Cache the stats
+        localStorage.setItem(cacheKey, JSON.stringify(newStats));
+        localStorage.setItem(`${cacheKey}_time`, now.toString());
+        
+        setUserStats({
+          ...newStats,
           lastActivity: user?.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never',
           joinDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown',
           completionRate: calculateProfileCompletion()
@@ -230,7 +276,7 @@ export default function Profile() {
     }
   };
 
-  const handleAvatarSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
@@ -251,6 +297,31 @@ export default function Profile() {
         setAvatarPreview(e.target?.result as string);
       };
       reader.readAsDataURL(file);
+
+      // Auto-upload avatar immediately
+      try {
+        setSaveLoading(true);
+        setMessage({ type: 'success', text: 'Uploading avatar...' });
+        
+        const avatarResponse = await apiService.uploadAvatar(file);
+        if (avatarResponse.success) {
+          setMessage({ type: 'success', text: 'Avatar updated successfully!' });
+          setAvatarFile(null);
+          setAvatarPreview(null);
+          
+          // Refresh user data to get new avatar
+          await refreshUser();
+        } else {
+          throw new Error(avatarResponse.message || 'Failed to upload avatar');
+        }
+      } catch (error: any) {
+        console.error('Avatar upload error:', error);
+        setMessage({ type: 'error', text: error.message || 'Failed to upload avatar' });
+        setAvatarFile(null);
+        setAvatarPreview(null);
+      } finally {
+        setSaveLoading(false);
+      }
     }
   };
 
@@ -264,15 +335,7 @@ export default function Profile() {
     setMessage(null);
 
     try {
-      // Upload avatar if selected
-      if (avatarFile) {
-        const avatarResponse = await apiService.uploadAvatar(avatarFile);
-        if (!avatarResponse.success) {
-          throw new Error(avatarResponse.message || 'Failed to upload avatar');
-        }
-      }
-
-      // Update profile
+      // Update profile (avatar is handled separately)
       const response = await apiService.updateUserProfile({
         name: formData.name,
         email: formData.email,
@@ -337,6 +400,11 @@ export default function Profile() {
   };
 
   const refreshStats = async () => {
+    // Clear cache to force fresh data
+    const cacheKey = `userStats_${user?.id}`;
+    localStorage.removeItem(cacheKey);
+    localStorage.removeItem(`${cacheKey}_time`);
+    
     await loadUserStats();
     setMessage({ type: 'success', text: 'Stats refreshed successfully!' });
     setTimeout(() => setMessage(null), 3000);
@@ -545,7 +613,7 @@ export default function Profile() {
                   <div className="relative inline-block mb-4">
                     <Avatar className="w-24 h-24 border-4 border-white shadow-lg">
                       <AvatarImage 
-                        src={avatarPreview || user?.avatar} 
+                        src={avatarPreview || (user?.avatar ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${user.avatar}` : '')} 
                         alt={user?.name} 
                       />
                       <AvatarFallback className="text-xl font-semibold bg-gradient-to-br from-blue-400 to-blue-600 text-white">
@@ -554,13 +622,22 @@ export default function Profile() {
                     </Avatar>
                     
                     {editing && (
-                      <label className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
-                        <Camera className="h-4 w-4" />
+                      <label className={`absolute -bottom-2 -right-2 p-2 rounded-full cursor-pointer transition-colors ${
+                        saveLoading 
+                          ? 'bg-gray-400 cursor-not-allowed' 
+                          : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      }`}>
+                        {saveLoading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        ) : (
+                          <Camera className="h-4 w-4" />
+                        )}
                         <input
                           type="file"
                           accept="image/*"
                           onChange={handleAvatarSelect}
                           className="hidden"
+                          disabled={saveLoading}
                         />
                       </label>
                     )}

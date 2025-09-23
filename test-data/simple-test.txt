@@ -1,0 +1,25 @@
+Sample Product Catalog
+
+Product Name: Gaming Laptop ASUS ROG
+SKU: ASUS-ROG-2024
+Category: Laptops
+Brand: ASUS
+Price: 95000
+Cost: 75000
+Stock: 10
+
+Product Name: Wireless Mouse Logitech
+SKU: LOGI-MX-2024  
+Category: Accessories
+Brand: Logitech
+Price: 7500
+Cost: 5000
+Stock: 25
+
+Product Name: iPhone 15 Pro
+SKU: APPL-IP15-PRO
+Category: Smartphones
+Brand: Apple
+Price: 125000
+Cost: 95000
+Stock: 15

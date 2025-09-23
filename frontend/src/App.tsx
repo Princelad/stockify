@@ -21,6 +21,7 @@ import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import Aboutus from './pages/Aboutus';
 import Contactus from './pages/Contactus';
+import AuthCallback from '@/pages/AuthCallback';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
         <div className="min-h-screen">
           <Routes>
             {/* Public routes */}
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />

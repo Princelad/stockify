@@ -204,14 +204,27 @@ class ApiService {
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
     
+    // Handle FormData - don't set Content-Type header for FormData
+    const isFormData = options.body instanceof FormData;
+    
     const config: RequestInit = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-      credentials: 'include',
       ...options,
+      credentials: 'include',
     };
+
+    // Set headers conditionally
+    if (options.headers === undefined && isFormData) {
+      // For FormData, let browser set Content-Type automatically
+      config.headers = {};
+    } else if (options.headers !== undefined) {
+      // Use provided headers
+      config.headers = options.headers;
+    } else {
+      // Default JSON headers
+      config.headers = {
+        'Content-Type': 'application/json',
+      };
+    }
 
     // Add auth token if available
     const token = localStorage.getItem('authToken');
@@ -725,6 +738,109 @@ class ApiService {
   async exportUserData(): Promise<ApiResponse> {
     return this.request('/users/export', {
       method: 'GET',
+    });
+  }
+
+  // PDF Processing methods
+  async previewPDFExtraction(
+    file: File,
+    options?: {
+      supplierName?: string;
+      defaultCategory?: string;
+      priceType?: string;
+      enableOCR?: boolean;
+    }
+  ): Promise<ApiResponse<{
+    summary: {
+      totalProducts: number;
+      confidence: number;
+      method: string;
+      templateName?: string;
+      templateConfidence?: number;
+      extractionMethod: string;
+      ocrUsed: boolean;
+      processingTime: string;
+      fieldsFound: Record<string, { count: number; percentage: number }>;
+    };
+    sampleProducts: Product[];
+    extractedText: string;
+    recommendations: {
+      confidence: number;
+      suggestedMethod: string;
+      fieldQuality: Record<string, any>;
+    };
+  }>> {
+    const formData = new FormData();
+    formData.append('pdfFile', file);
+    
+    if (options?.supplierName) {
+      formData.append('supplierName', options.supplierName);
+    }
+    if (options?.defaultCategory) {
+      formData.append('defaultCategory', options.defaultCategory);
+    }
+    if (options?.priceType) {
+      formData.append('priceType', options.priceType);
+    }
+    if (options?.enableOCR !== undefined) {
+      formData.append('enableOCR', String(options.enableOCR));
+    }
+
+    return this.request('/products/pdf-import/preview', {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type, let browser set it for FormData
+      headers: undefined
+    });
+  }
+
+  async processPDFImport(
+    file: File,
+    options: {
+      supplierName: string;
+      defaultCategory?: string;
+      priceType?: string;
+      enableOCR?: boolean;
+    }
+  ): Promise<ApiResponse<{
+    extractedProducts: Product[];
+    summary: any;
+    importSessionId: string;
+  }>> {
+    const formData = new FormData();
+    formData.append('pdfFile', file);
+    formData.append('supplierName', options.supplierName);
+    
+    if (options.defaultCategory) {
+      formData.append('defaultCategory', options.defaultCategory);
+    }
+    if (options.priceType) {
+      formData.append('priceType', options.priceType);
+    }
+    if (options.enableOCR !== undefined) {
+      formData.append('enableOCR', String(options.enableOCR));
+    }
+
+    return this.request('/products/pdf-import/process', {
+      method: 'POST',
+      body: formData,
+      headers: undefined
+    });
+  }
+
+  async confirmPDFImport(data: {
+    products: Product[];
+    supplierInfo: any;
+    importOptions: any;
+  }): Promise<ApiResponse<{
+    importedCount: number;
+    skippedCount: number;
+    failedCount: number;
+    importedProducts: Product[];
+  }>> {
+    return this.request('/products/pdf-import/confirm', {
+      method: 'POST',
+      body: JSON.stringify(data),
     });
   }
 

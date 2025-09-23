@@ -36,6 +36,11 @@ const saleSchema = new mongoose.Schema(
       default: "paid",
     },
     invoiceNumber: { type: String, unique: true },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
   { timestamps: true }
 );

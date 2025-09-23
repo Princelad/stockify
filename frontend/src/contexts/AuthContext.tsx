@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
-import { getCurrentUser, clearAuthData, isAuthenticated } from '@/lib/api';
+import { clearAuthData, isAuthenticated } from '@/lib/api';
 import type { User } from '@/lib/api';
 
 interface AuthContextType {
@@ -72,12 +72,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     window.location.href = '/login';
   };
 
-  const refreshUser = () => {
+  const refreshUser = async () => {
     try {
       if (isAuthenticated()) {
-        const userData = getCurrentUser();
-        if (userData) {
-          setUser(userData);
+        // Fetch fresh user data from backend
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/users/profile`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+        if (data.success && data.data) {
+          setUser(data.data);
+          // Update localStorage with fresh data
+          localStorage.setItem('userData', JSON.stringify(data.data));
         }
       }
     } catch (error) {

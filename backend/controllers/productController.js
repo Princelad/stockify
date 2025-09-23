@@ -1185,6 +1185,13 @@ const previewPDFExtraction = async (req, res) => {
             return res.status(400).json(extractionResult);
         }
 
+        // Debug logging
+        console.log('📊 PDF Extraction Results:');
+        console.log('- Total products found:', extractionResult.data.products.length);
+        console.log('- Extraction method:', extractionResult.data.summary.method);
+        console.log('- Confidence:', extractionResult.data.summary.confidence);
+        console.log('- Sample products:', extractionResult.data.products.slice(0, 3));
+        
         res.json({
             success: true,
             message: 'PDF extraction preview generated',

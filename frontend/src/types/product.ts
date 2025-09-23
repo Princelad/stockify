@@ -113,12 +113,11 @@ export interface CreateProductRequest {
   sellingPrice: number;
   wholesalePrice?: number;
   retailPrice?: number;
-  stock: number; // Frontend uses this
-  currentStock?: number; // Backend expects this
+  currentStock: number; // Backend expects this
   minStockLevel: number;
   maxStockLevel?: number;
-  supplier: {
-    name: string;
+  supplier?: {
+    name?: string;
     contact?: string;
     email?: string;
     phone?: string;

@@ -1,5 +1,5 @@
 const Tesseract = require('tesseract.js');
-const Jimp = require('jimp');
+const { Jimp } = require('jimp');
 const fs = require('fs');
 const path = require('path');
 
@@ -143,22 +143,52 @@ class OCRProcessingService {
     /**
      * Extract structured data from OCR text
      */
-    extractProductsFromOCRText(ocrText) {
+    async extractProductsFromOCRText(ocrText) {
+        console.log('📄 Analyzing OCR text for product data...');
+        
         const products = [];
         const lines = ocrText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
         
+        console.log(`📄 Processing ${lines.length} lines from OCR text`);
+        
         // Look for table-like structures in OCR text
-        const tableData = this.extractTableFromOCR(lines);
-        if (tableData.length > 0) {
-            products.push(...tableData);
+        try {
+            const tableData = await this.extractTableFromOCR(lines);
+            if (tableData.length > 0) {
+                console.log(`📊 Found ${tableData.length} products in table format`);
+                products.push(...tableData);
+            }
+        } catch (error) {
+            console.error('❌ Table extraction error:', error);
         }
         
-        // Look for list-like structures
-        const listData = this.extractListFromOCR(lines);
-        if (listData.length > 0) {
-            products.push(...listData);
+        // Look for list-like structures if no table data found
+        if (products.length === 0) {
+            try {
+                const listData = await this.extractListFromOCR(lines);
+                if (listData.length > 0) {
+                    console.log(`📝 Found ${listData.length} products in list format`);
+                    products.push(...listData);
+                }
+            } catch (error) {
+                console.error('❌ List extraction error:', error);
+            }
         }
         
+        // Fallback: try pattern-based extraction
+        if (products.length === 0) {
+            try {
+                const patternProduct = this.extractByPatterns(ocrText);
+                if (patternProduct) {
+                    console.log(`🔍 Found 1 product using pattern matching`);
+                    products.push(patternProduct);
+                }
+            } catch (error) {
+                console.error('❌ Pattern extraction error:', error);
+            }
+        }
+        
+        console.log(`✅ Total products extracted from OCR: ${products.length}`);
         return products;
     }
 
@@ -308,11 +338,152 @@ class OCRProcessingService {
             .trim();
     }
 
+    /**
+     * Extract products using pattern matching (fallback method)
+     */
+    async extractByPatterns(lines) {
+        const products = [];
+        const productPatterns = {
+            name: /^[A-Z][A-Za-z\s&\-\.]{5,80}$/,
+            price: /[₹$£€]\s*[\d,]+\.?\d*/,
+            sku: /[A-Z0-9\-_]{4,15}/,
+            quantity: /\b(\d{1,4})\s*(pcs?|units?|qty|pieces?)\b/i
+        };
+
+        let currentProduct = {};
+        
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            
+            // Check if this looks like a product name
+            if (productPatterns.name.test(line) && !line.includes('Page') && !line.includes('Total')) {
+                // Save previous product if valid
+                if (this.isValidOCRProduct(currentProduct)) {
+                    products.push({ ...currentProduct });
+                }
+                
+                currentProduct = { name: line };
+                
+                // Look ahead for price, SKU, etc. in next few lines
+                for (let j = i + 1; j < Math.min(i + 4, lines.length); j++) {
+                    const nextLine = lines[j];
+                    
+                    // Extract price
+                    const priceMatch = nextLine.match(productPatterns.price);
+                    if (priceMatch && !currentProduct.price) {
+                        const priceStr = priceMatch[0].replace(/[₹$£€,\s]/g, '');
+                        const price = parseFloat(priceStr);
+                        if (price > 0 && price < 1000000) {
+                            currentProduct.price = price;
+                        }
+                    }
+                    
+                    // Extract SKU
+                    const skuMatch = nextLine.match(productPatterns.sku);
+                    if (skuMatch && !currentProduct.sku) {
+                        currentProduct.sku = skuMatch[0];
+                    }
+                    
+                    // Extract quantity
+                    const qtyMatch = nextLine.match(productPatterns.quantity);
+                    if (qtyMatch && !currentProduct.stock) {
+                        currentProduct.stock = parseInt(qtyMatch[1]);
+                    }
+                }
+            }
+        }
+        
+        // Don't forget the last product
+        if (this.isValidOCRProduct(currentProduct)) {
+            products.push(currentProduct);
+        }
+        
+        return products;
+    }
+
     isValidOCRProduct(product) {
         return product && 
                (product.name || product.description) && 
                product.name !== '' && 
+               product.name.length >= 3 &&
                Object.keys(product).length >= 1;
+    }
+
+    /**
+     * Extract product data using pattern matching as fallback
+     */
+    extractByPatterns(text) {
+        console.log('🔍 Starting pattern-based extraction for text:', text.substring(0, 200) + '...');
+        
+        const patterns = {
+            // Product name patterns - look for title-like text
+            name: [
+                /^([A-Z][A-Za-z\s\-&,.']+)(?=\n|\r|$)/m,
+                /Product[:\s]+([A-Za-z\s\-&,.']+)/i,
+                /Item[:\s]+([A-Za-z\s\-&,.']+)/i,
+                /^([A-Za-z\s\-&,.'\d]+)$/m
+            ],
+            // Price patterns
+            price: [
+                /(?:price|cost|rate|amount)[:\s]*[₹$£€]?\s*(\d+\.?\d*)/gi,
+                /[₹$£€]\s*(\d+\.?\d*)/g,
+                /(\d+\.?\d*)\s*[₹$£€]/g,
+                /Total[:\s]*[₹$£€]?\s*(\d+\.?\d*)/i
+            ],
+            // SKU/Code patterns
+            sku: [
+                /(?:sku|code|item#|part#)[:\s]*([A-Z0-9\-_]+)/gi,
+                /([A-Z]{2,}\d{2,})/g,
+                /([A-Z]+\-\d+)/g
+            ],
+            // Quantity patterns
+            stock: [
+                /(?:qty|quantity|stock|available)[:\s]*(\d+)/gi,
+                /(\d+)\s*(?:pcs|pieces|units)/gi,
+                /In Stock[:\s]*(\d+)/i
+            ],
+            // Category patterns
+            category: [
+                /(?:category|type|class)[:\s]*([A-Za-z\s\-]+)/gi,
+                /Department[:\s]*([A-Za-z\s\-]+)/i
+            ],
+            // Description patterns
+            description: [
+                /(?:description|details)[:\s]*([A-Za-z\s\-.,\d]+)/gi,
+                /Features[:\s]*([A-Za-z\s\-.,\d]+)/i
+            ]
+        };
+
+        const product = {};
+
+        // Extract each field using patterns
+        for (const [field, fieldPatterns] of Object.entries(patterns)) {
+            for (const pattern of fieldPatterns) {
+                const matches = text.match(pattern);
+                if (matches && matches[1] && !product[field]) {
+                    let value = matches[1].trim();
+                    
+                    // Clean and validate the extracted value
+                    if (field === 'price' || field === 'stock') {
+                        const numValue = parseFloat(value);
+                        if (!isNaN(numValue) && numValue > 0) {
+                            product[field] = numValue;
+                        }
+                    } else if (value.length > 1 && value.length < 200) {
+                        product[field] = value;
+                    }
+                    
+                    console.log(`✅ Pattern extracted ${field}:`, value);
+                    break; // Use first successful match
+                }
+            }
+        }
+
+        // If we found something useful, return it
+        const validFields = Object.keys(product).length;
+        console.log(`📊 Pattern extraction found ${validFields} fields:`, product);
+        
+        return validFields > 0 ? product : null;
     }
 
     /**
