@@ -21,7 +21,10 @@ import {
   Package, 
   Loader2,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Download,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 
 export default function Categories() {
@@ -39,6 +42,10 @@ export default function Categories() {
     description: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  
+  const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -80,10 +87,20 @@ export default function Categories() {
       setSubmitting(true);
       setError(null);
       
-      const response = await apiService.createCategory({
-        name: formData.name.trim(),
-        description: formData.description.trim() || undefined
-      });
+      let response;
+      if (editingCategory) {
+        // Update existing category
+        response = await apiService.updateCategory(editingCategory._id, {
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined
+        });
+      } else {
+        // Create new category
+        response = await apiService.createCategory({
+          name: formData.name.trim(),
+          description: formData.description.trim() || undefined
+        });
+      }
 
       if (response.success) {
         // Refresh categories list
@@ -94,11 +111,11 @@ export default function Categories() {
         setIsAddDialogOpen(false);
         setEditingCategory(null);
       } else {
-        setError(response.message || 'Failed to create category');
+        setError(response.message || `Failed to ${editingCategory ? 'update' : 'create'} category`);
       }
     } catch (err) {
-      console.error('Error creating category:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create category');
+      console.error(`Error ${editingCategory ? 'updating' : 'creating'} category:`, err);
+      setError(err instanceof Error ? err.message : `Failed to ${editingCategory ? 'update' : 'create'} category`);
     } finally {
       setSubmitting(false);
     }
@@ -126,15 +143,28 @@ export default function Categories() {
       return;
     }
 
-    if (confirm(`Are you sure you want to delete "${category.name}"?`)) {
-      try {
-        // TODO: Implement delete API call
-        console.log('Delete category:', category._id);
-        alert('Delete functionality will be implemented soon.');
-      } catch (err) {
-        console.error('Error deleting category:', err);
-        setError('Failed to delete category');
+    setCategoryToDelete(category);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!categoryToDelete) return;
+    
+    try {
+      setError(null);
+      const response = await apiService.deleteCategory(categoryToDelete._id);
+      
+      if (response.success) {
+        // Refresh categories list
+        await fetchCategories();
+        setDeleteDialogOpen(false);
+        setCategoryToDelete(null);
+      } else {
+        setError(response.message || 'Failed to delete category');
       }
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete category');
     }
   };
 
@@ -163,6 +193,45 @@ export default function Categories() {
     category.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (category.description && category.description.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  // Add utility functions for enhanced functionality
+  const handleSelectAll = () => {
+    if (selectedCategories.size === filteredCategories.length) {
+      setSelectedCategories(new Set());
+    } else {
+      setSelectedCategories(new Set(filteredCategories.map(cat => cat._id)));
+    }
+  };
+
+  const handleSelectCategory = (categoryId: string) => {
+    const newSelection = new Set(selectedCategories);
+    if (newSelection.has(categoryId)) {
+      newSelection.delete(categoryId);
+    } else {
+      newSelection.add(categoryId);
+    }
+    setSelectedCategories(newSelection);
+  };
+
+  const exportCategories = () => {
+    const csvContent = [
+      ['Name', 'Description', 'Type', 'Product Count'].join(','),
+      ...filteredCategories.map(cat => [
+        `"${cat.name}"`,
+        `"${cat.description || ''}"`,
+        `"${getCategoryTypeLabel(cat)}"`,
+        cat.count
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'categories.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
 
   if (loading) {
     return (
@@ -213,6 +282,13 @@ export default function Categories() {
                 </p>
               </div>
               <div className="flex space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={exportCategories}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
                 <Button 
                   variant="outline" 
                   onClick={fetchCategories}
@@ -316,27 +392,60 @@ export default function Categories() {
             </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar & Controls */}
           <Card className="mb-6">
             <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Search categories by name or description..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search categories by name or description..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                  {searchTerm && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSearchTerm('')}
+                    >
+                      Clear
+                    </Button>
+                  )}
                 </div>
-                {searchTerm && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSearchTerm('')}
-                  >
-                    Clear
-                  </Button>
+                
+                {/* Bulk Actions Row */}
+                {selectedCategories.size > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleSelectAll}
+                      >
+                        {selectedCategories.size === filteredCategories.length ? (
+                          <CheckSquare className="h-4 w-4" />
+                        ) : (
+                          <Square className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <span className="text-sm font-medium text-blue-700">
+                        {selectedCategories.size} selected
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setSelectedCategories(new Set())}
+                      >
+                        Clear Selection
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -397,18 +506,68 @@ export default function Categories() {
             </Card>
           </div>
 
+          {/* Category Insights */}
+          {categories.length > 0 && (
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle className="text-lg">Category Insights</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Most Used Category</p>
+                    <p className="font-semibold text-lg">
+                      {categories.reduce((max, cat) => cat.count > max.count ? cat : max, categories[0])?.name || 'N/A'}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Average Products per Category</p>
+                    <p className="font-semibold text-lg">
+                      {categories.length > 0 ? Math.round(categories.reduce((sum, cat) => sum + cat.count, 0) / categories.length) : 0}
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600">Empty Categories</p>
+                    <p className="font-semibold text-lg">
+                      {categories.filter(cat => cat.count === 0).length}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Categories Grid */}
           {filteredCategories.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {filteredCategories.map((category) => (
-                <Card key={category._id} className="hover:shadow-md transition-shadow">
+                <Card 
+                  key={category._id} 
+                  className={`hover:shadow-md transition-all ${
+                    selectedCategories.has(category._id) ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+                  }`}
+                >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-2">
-                        {getCategoryIcon(category)}
-                        <Badge variant={getCategoryBadgeVariant(category)} className="text-xs">
-                          {getCategoryTypeLabel(category)}
-                        </Badge>
+                      <div className="flex items-center space-x-3">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSelectCategory(category._id)}
+                          className="h-6 w-6 p-0"
+                        >
+                          {selectedCategories.has(category._id) ? (
+                            <CheckSquare className="h-4 w-4 text-blue-600" />
+                          ) : (
+                            <Square className="h-4 w-4 text-gray-400" />
+                          )}
+                        </Button>
+                        <div className="flex items-center space-x-2">
+                          {getCategoryIcon(category)}
+                          <Badge variant={getCategoryBadgeVariant(category)} className="text-xs">
+                            {getCategoryTypeLabel(category)}
+                          </Badge>
+                        </div>
                       </div>
                       <div className="flex space-x-1">
                         {category.type === 'user_created' && (
@@ -486,6 +645,35 @@ export default function Categories() {
             </Card>
           )}
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Category</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete "{categoryToDelete?.name}"? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDeleteDialogOpen(false);
+                  setCategoryToDelete(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={confirmDelete}
+              >
+                Delete Category
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
     </InventoryLayout>
   );
 }

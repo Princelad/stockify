@@ -411,6 +411,19 @@ class ApiService {
     });
   }
 
+  async updateCategory(id: string, categoryData: { name: string; description?: string }): Promise<ApiResponse> {
+    return this.request(`/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(categoryData),
+    });
+  }
+
+  async deleteCategory(id: string): Promise<ApiResponse> {
+    return this.request(`/categories/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getSuppliers(): Promise<ApiResponse<Supplier[]>> {
     return this.request('/products/suppliers', {
       method: 'GET',
