@@ -13,13 +13,13 @@ dotenv.config();
 // Ensure upload directories exist
 const createUploadDirs = () => {
   const uploadDirs = [
-    'uploads',
-    'uploads/avatars',
-    'uploads/pdfs',
-    'uploads/labels'
+    "uploads",
+    "uploads/avatars",
+    "uploads/pdfs",
+    "uploads/labels",
   ];
 
-  uploadDirs.forEach(dir => {
+  uploadDirs.forEach((dir) => {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
       console.log(`✅ Created directory: ${dir}`);
@@ -44,6 +44,7 @@ const productRoutes = require("./routes/products");
 const categoryRoutes = require("./routes/categoryRoutes");
 const salesRoutes = require("./routes/sales");
 const customerRoutes = require("./routes/customers");
+const supplierRoutes = require("./routes/suppliers");
 const labelRoutes = require("./routes/labels");
 const reportRoutes = require("./routes/reports");
 const userRoutes = require("./routes/users");
@@ -81,7 +82,7 @@ app.use(
 app.use(express.urlencoded({ extended: true }));
 
 // Serve static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Session configuration
 app.use(
@@ -125,6 +126,7 @@ app.get("/", (req, res) => {
       products: "/api/products",
       sales: "/api/sales",
       customers: "/api/customers",
+      suppliers: "/api/suppliers",
       categories: "/api/categories",
       labels: "/api/labels",
       reports: "/api/reports",
@@ -141,6 +143,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/sales", salesRoutes);
 app.use("/api/customers", customerRoutes);
+app.use("/api/suppliers", supplierRoutes);
 app.use("/api/labels", labelRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/users", userRoutes);

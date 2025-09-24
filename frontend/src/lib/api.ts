@@ -8,6 +8,7 @@ import type {
   CreateProductRequest, 
   StockUpdateRequest,
   Supplier,
+  ExtendedSupplier,
   Category
 } from '@/types/product';
 
@@ -424,8 +425,120 @@ class ApiService {
     });
   }
 
-  async getSuppliers(): Promise<ApiResponse<Supplier[]>> {
-    return this.request('/products/suppliers', {
+  // =====================================================
+  // SUPPLIERS API METHODS
+  // =====================================================
+
+  async getSuppliers(params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string;
+    status?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<ApiResponse<{
+    data: ExtendedSupplier[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalItems: number;
+      itemsPerPage: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  }>> {
+    const query = params ? `?${new URLSearchParams(
+      Object.entries(params)
+        .filter(([, value]) => value !== undefined && value !== '')
+        .map(([key, value]) => [key, String(value)])
+    ).toString()}` : '';
+    
+    return this.request(`/suppliers${query}`, {
+      method: 'GET',
+    });
+  }
+
+  async getSupplier(id: string): Promise<ApiResponse<ExtendedSupplier>> {
+    return this.request(`/suppliers/${id}`, {
+      method: 'GET',
+    });
+  }
+
+  async createSupplier(supplierData: {
+    name: string;
+    contactPerson?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    category?: string;
+    paymentTerms?: string;
+    status?: 'active' | 'inactive';
+    businessType?: string;
+    taxId?: string;
+    creditLimit?: number;
+    website?: string;
+    notes?: string;
+  }): Promise<ApiResponse<ExtendedSupplier>> {
+    return this.request('/suppliers', {
+      method: 'POST',
+      body: JSON.stringify(supplierData),
+    });
+  }
+
+  async updateSupplier(id: string, supplierData: {
+    name?: string;
+    contactPerson?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    category?: string;
+    paymentTerms?: string;
+    status?: 'active' | 'inactive';
+    businessType?: string;
+    taxId?: string;
+    creditLimit?: number;
+    website?: string;
+    notes?: string;
+  }): Promise<ApiResponse<ExtendedSupplier>> {
+    return this.request(`/suppliers/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(supplierData),
+    });
+  }
+
+  async deleteSupplier(id: string): Promise<ApiResponse> {
+    return this.request(`/suppliers/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getSupplierStats(): Promise<ApiResponse<{
+    overview: {
+      totalSuppliers: number;
+      activeSuppliers: number;
+      inactiveSuppliers: number;
+      totalCreditLimit: number;
+    };
+    categoryBreakdown: Array<{ _id: string; count: number }>;
+    recentSuppliers: Array<{
+      _id: string;
+      name: string;
+      category: string;
+      status: string;
+      createdAt: string;
+    }>;
+  }>> {
+    return this.request('/suppliers/stats', {
+      method: 'GET',
+    });
+  }
+
+  async searchSuppliers(query: string, limit?: number): Promise<ApiResponse<ExtendedSupplier[]>> {
+    const params = new URLSearchParams({ q: query });
+    if (limit) params.append('limit', limit.toString());
+    
+    return this.request(`/suppliers/search?${params.toString()}`, {
       method: 'GET',
     });
   }
@@ -558,7 +671,7 @@ class ApiService {
 
   // Enhanced product search for billing (includes stock info)
   async searchProductsForBilling(query: string): Promise<ApiResponse<ProductsResponse>> {
-    return this.request(`/products?search=${encodeURIComponent(query)}&limit=10&includeStock=true`, {
+    return this.request(`/products/search/billing?q=${encodeURIComponent(query)}&limit=20`, {
       method: 'GET',
     });
   }

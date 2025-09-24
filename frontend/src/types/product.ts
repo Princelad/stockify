@@ -160,3 +160,28 @@ export interface Supplier {
   productCount: number;
   totalValue: number;
 }
+
+export interface ExtendedSupplier {
+  _id: string;
+  name: string;
+  contact?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  productCount: number;
+  totalValue: number;
+  contactPerson?: string;
+  lastOrder?: string;
+  status?: 'active' | 'inactive';
+  paymentTerms?: string;
+  category?: string;
+  businessType?: string;
+  taxId?: string;
+  creditLimit?: number;
+  website?: string;
+  notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  lastOrderDate?: string;
+  totalOrderValue?: number;
+}
