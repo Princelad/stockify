@@ -59,12 +59,18 @@ const productSchema = new mongoose.Schema(
       type: Number,
       min: 0,
     },
-    // Supplier Information
+    // Supplier Information - supports both reference and embedded for backward compatibility
     supplier: {
+      // For backward compatibility - embedded supplier info
       name: String,
       contact: String,
       email: String,
       address: String,
+    },
+    // New supplier reference field
+    supplierId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Supplier",
     },
     // Product Details
     barcode: {

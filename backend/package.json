@@ -5,6 +5,14 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
+    "seed": "node scripts/seedDatabase.js",
+    "seed:dev": "NODE_ENV=development node scripts/seedDatabase.js",
+    "seed:interactive": "node scripts/seed.js",
+    "seed:check": "node scripts/checkEnv.js",
+    "db:stats": "node scripts/dbUtils.js stats",
+    "db:clear": "node scripts/dbUtils.js clear",
+    "db:validate": "node scripts/dbUtils.js validate",
+    "db:activity": "node scripts/dbUtils.js activity",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

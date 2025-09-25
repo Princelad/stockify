@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Search, Plus, Download, Upload } from 'lucide-react';
-import { apiService } from '@/lib/api';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
-import FixedAddProduct from '@/components/FixedAddProduct';
+import { useEffect, useState } from "react";
+import { Search, Plus, Download, Upload } from "lucide-react";
+import { apiService } from "@/lib/api";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { QuickAddProduct } from "@/components/product";
 
 interface Product {
   _id: string;
@@ -21,8 +21,8 @@ interface Product {
 export function ProductTable() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
   useEffect(() => {
@@ -41,9 +41,9 @@ export function ProductTable() {
         filters.search = searchTerm;
       }
 
-      if (activeTab === 'low-stock') {
+      if (activeTab === "low-stock") {
         filters.lowStock = true;
-      } else if (activeTab === 'out-of-stock') {
+      } else if (activeTab === "out-of-stock") {
         filters.outOfStock = true;
       }
 
@@ -60,7 +60,7 @@ export function ProductTable() {
         }
       }
     } catch (error) {
-      console.error('Failed to fetch products:', error);
+      console.error("Failed to fetch products:", error);
       setProducts([]);
     } finally {
       setLoading(false);
@@ -72,18 +72,30 @@ export function ProductTable() {
     const minLevel = product.minStockLevel || 0;
 
     if (stock === 0) {
-      return <span className="inline-block px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold">Critical</span>;
+      return (
+        <span className="inline-block px-2 py-1 rounded bg-red-100 text-red-700 text-xs font-semibold">
+          Critical
+        </span>
+      );
     } else if (stock <= minLevel) {
-      return <span className="inline-block px-2 py-1 rounded bg-orange-100 text-orange-700 text-xs font-semibold">Low Stock</span>;
+      return (
+        <span className="inline-block px-2 py-1 rounded bg-orange-100 text-orange-700 text-xs font-semibold">
+          Low Stock
+        </span>
+      );
     } else {
-      return <span className="inline-block px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-semibold">In Stock</span>;
+      return (
+        <span className="inline-block px-2 py-1 rounded bg-green-100 text-green-700 text-xs font-semibold">
+          In Stock
+        </span>
+      );
     }
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
     }).format(amount);
   };
 
@@ -120,7 +132,7 @@ export function ProductTable() {
           <p className="text-sm text-gray-500">Manage your inventory items</p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <button 
+          <button
             onClick={() => setIsAddProductOpen(true)}
             className="px-4 py-2 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700 flex items-center gap-2"
           >
@@ -152,25 +164,31 @@ export function ProductTable() {
         </div>
         <div className="flex gap-2">
           <button
-            onClick={() => setActiveTab('all')}
+            onClick={() => setActiveTab("all")}
             className={`px-4 py-2 rounded font-medium ${
-              activeTab === 'all' ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-100'
+              activeTab === "all"
+                ? "bg-blue-50 text-blue-700"
+                : "hover:bg-gray-100"
             }`}
           >
             All Products
           </button>
           <button
-            onClick={() => setActiveTab('low-stock')}
+            onClick={() => setActiveTab("low-stock")}
             className={`px-4 py-2 rounded font-medium ${
-              activeTab === 'low-stock' ? 'bg-orange-50 text-orange-700' : 'hover:bg-gray-100'
+              activeTab === "low-stock"
+                ? "bg-orange-50 text-orange-700"
+                : "hover:bg-gray-100"
             }`}
           >
             Low Stock
           </button>
           <button
-            onClick={() => setActiveTab('out-of-stock')}
+            onClick={() => setActiveTab("out-of-stock")}
             className={`px-4 py-2 rounded font-medium ${
-              activeTab === 'out-of-stock' ? 'bg-red-50 text-red-700' : 'hover:bg-gray-100'
+              activeTab === "out-of-stock"
+                ? "bg-red-50 text-red-700"
+                : "hover:bg-gray-100"
             }`}
           >
             Out of Stock
@@ -198,20 +216,32 @@ export function ProductTable() {
               products.map((product) => (
                 <tr key={product._id} className="border-t hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium">{product.name}</td>
-                  <td className="px-4 py-3 text-gray-600 font-mono text-xs">{product.sku}</td>
-                  <td className="px-4 py-3 text-gray-600">{product.category}</td>
-                  <td className="px-4 py-3 font-medium">{formatCurrency(product.sellingPrice)}</td>
+                  <td className="px-4 py-3 text-gray-600 font-mono text-xs">
+                    {product.sku}
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {product.category}
+                  </td>
+                  <td className="px-4 py-3 font-medium">
+                    {formatCurrency(product.sellingPrice)}
+                  </td>
                   <td className="px-4 py-3">
-                    <span className={`font-medium ${
-                      product.currentStock === 0 ? 'text-red-600' :
-                      product.currentStock <= product.minStockLevel ? 'text-orange-600' :
-                      'text-green-600'
-                    }`}>
+                    <span
+                      className={`font-medium ${
+                        product.currentStock === 0
+                          ? "text-red-600"
+                          : product.currentStock <= product.minStockLevel
+                          ? "text-orange-600"
+                          : "text-green-600"
+                      }`}
+                    >
                       {product.currentStock}
                     </span>
                   </td>
                   <td className="px-4 py-3">{getStatusBadge(product)}</td>
-                  <td className="px-4 py-3 text-gray-600">{product.supplier?.name || 'N/A'}</td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {product.supplier?.name || "N/A"}
+                  </td>
                   <td className="px-4 py-3">
                     <button className="text-blue-600 hover:text-blue-800 text-sm font-medium">
                       View
@@ -237,9 +267,15 @@ export function ProductTable() {
             Showing {products.length} products
           </div>
           <div className="flex gap-1">
-            <button className="px-3 py-1 rounded border font-semibold hover:bg-gray-50">1</button>
-            <button className="px-3 py-1 rounded border font-semibold hover:bg-gray-50">2</button>
-            <button className="px-3 py-1 rounded border font-semibold hover:bg-gray-50">3</button>
+            <button className="px-3 py-1 rounded border font-semibold hover:bg-gray-50">
+              1
+            </button>
+            <button className="px-3 py-1 rounded border font-semibold hover:bg-gray-50">
+              2
+            </button>
+            <button className="px-3 py-1 rounded border font-semibold hover:bg-gray-50">
+              3
+            </button>
           </div>
         </div>
       )}
@@ -247,7 +283,7 @@ export function ProductTable() {
       {/* Add Product Modal */}
       <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <FixedAddProduct 
+          <QuickAddProduct
             onSuccess={handleAddProductSuccess}
             onCancel={handleAddProductCancel}
           />

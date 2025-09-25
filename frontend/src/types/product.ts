@@ -116,6 +116,9 @@ export interface CreateProductRequest {
   currentStock: number; // Backend expects this
   minStockLevel: number;
   maxStockLevel?: number;
+  // Supplier reference (new way)
+  supplierId?: string;
+  // Supplier embedded info (backward compatibility)
   supplier?: {
     name?: string;
     contact?: string;

@@ -706,6 +706,32 @@ const createProduct = async (req, res) => {
       createdBy: req.user._id,
     };
 
+    // Handle supplier reference if supplierId is provided
+    if (productData.supplierId) {
+      // Verify supplier exists and belongs to user
+      const Supplier = require("../models/Supplier");
+      const supplierExists = await Supplier.findOne({
+        _id: productData.supplierId,
+        createdBy: req.user._id,
+        isActive: true,
+      });
+
+      if (!supplierExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid supplier selected",
+        });
+      }
+
+      // Also populate supplier info for backward compatibility
+      productData.supplier = {
+        name: supplierExists.name,
+        contact: supplierExists.phone,
+        email: supplierExists.email,
+        address: supplierExists.address?.full || "",
+      };
+    }
+
     const product = new Product(productData);
     const savedProduct = await product.save();
     await savedProduct.populate("createdBy", "name email");
