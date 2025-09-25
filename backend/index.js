@@ -154,12 +154,6 @@ const startServer = async () => {
     // Connect to database
     await ConnectDb();
 
-    // Seed default categories
-    const {
-      seedDefaultCategories,
-    } = require("./controllers/categoryController");
-    await seedDefaultCategories();
-
     const port = process.env.PORT || 5000;
     app.listen(port, () => {
       console.log(`🚀 Server running on http://localhost:${port}`);

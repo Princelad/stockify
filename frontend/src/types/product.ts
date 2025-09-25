@@ -6,30 +6,32 @@ export interface Product {
   brand?: string;
   sku: string;
   barcode?: string;
-  
+
   // Pricing
   costPrice: number;
   sellingPrice: number;
   wholesalePrice?: number;
   retailPrice?: number;
   profitMargin?: number;
-  
+
   // Stock Management
   stock: number;
   currentStock: number; // API response uses this field
   minStockLevel: number;
   maxStockLevel?: number;
   reorderPoint?: number;
-  
+
   // Supplier Information
-  supplier: string | {
-    name: string;
-    contact?: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-  };
-  
+  supplier:
+    | string
+    | {
+        name: string;
+        contact?: string;
+        email?: string;
+        phone?: string;
+        address?: string;
+      };
+
   // Physical Properties
   weight?: number;
   dimensions?: {
@@ -37,16 +39,16 @@ export interface Product {
     width: number;
     height: number;
   };
-  
+
   // Status
   isActive: boolean;
   tags?: string[];
   images?: string[];
-  
+
   // Timestamps
   createdAt: string;
   updatedAt: string;
-  
+
   // Additional fields for display
   lowStock?: boolean;
   outOfStock?: boolean;
@@ -59,31 +61,31 @@ export interface DashboardStats {
   outOfStockProducts: number;
   totalSuppliers: number;
   totalCategories: number;
-  
+
   // Recent activity
   recentSales?: {
     count: number;
     value: number;
   };
-  
+
   // Top products
   topProducts?: Array<{
     product: Product;
     sales: number;
     revenue: number;
   }>;
-  
+
   // Category breakdown
   categoryBreakdown?: Array<{
     category: string;
     count: number;
     value: number;
   }>;
-  
+
   // Stock alerts
   stockAlerts?: Array<{
     product: Product;
-    alertType: 'low' | 'out' | 'overstock';
+    alertType: "low" | "out" | "overstock";
   }>;
 }
 
@@ -99,7 +101,7 @@ export interface ProductFilters {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 }
 
 export interface CreateProductRequest {
@@ -139,7 +141,7 @@ export interface CreateProductRequest {
 export interface StockUpdateRequest {
   productId: string;
   quantity: number;
-  operation: 'add' | 'subtract' | 'set';
+  operation: "add" | "subtract" | "set";
   reason?: string;
 }
 
@@ -149,8 +151,7 @@ export interface Category {
   description?: string;
   count: number;
   isPopular?: boolean;
-  isDefault?: boolean;
-  type?: 'predefined' | 'user_created' | 'from_products';
+  type?: "user_created" | "from_products" | "popular";
 }
 
 export interface Supplier {
@@ -175,7 +176,7 @@ export interface ExtendedSupplier {
   totalValue: number;
   contactPerson?: string;
   lastOrder?: string;
-  status?: 'active' | 'inactive';
+  status?: "active" | "inactive";
   paymentTerms?: string;
   category?: string;
   businessType?: string;

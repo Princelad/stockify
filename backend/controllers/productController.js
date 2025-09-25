@@ -706,6 +706,11 @@ const createProduct = async (req, res) => {
       createdBy: req.user._id,
     };
 
+    // Clean empty supplierId - convert empty string to undefined
+    if (productData.supplierId === "" || productData.supplierId === null) {
+      delete productData.supplierId;
+    }
+
     // Handle supplier reference if supplierId is provided
     if (productData.supplierId) {
       // Verify supplier exists and belongs to user

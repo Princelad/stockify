@@ -96,6 +96,11 @@ tmp/
 .mongodb/
 .redis/
 
+# Database Seeding Scripts (Development Only)
+backend/scripts/seed.js
+backend/scripts/seedDatabase.js
+backend/scripts/cleanupCategories.js
+
 # ===================================
 # IDE & Editor Files  
 # ===================================

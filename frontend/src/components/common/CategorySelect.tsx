@@ -1,14 +1,28 @@
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Plus, BarChart3, Loader2 } from 'lucide-react';
-import { apiService } from '@/lib/api';
-import { useToast } from '@/hooks/useToast';
-import type { Category } from '@/types/product';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Plus, BarChart3, Loader2 } from "lucide-react";
+import { apiService } from "@/lib/api";
+import { useToast } from "@/hooks/useToast";
+import type { Category } from "@/types/product";
 
 interface CategorySelectProps {
   value?: string;
@@ -24,21 +38,21 @@ interface CreateCategoryData {
   description: string;
 }
 
-export default function CategorySelect({ 
-  value, 
-  onSelect, 
-  placeholder = "Select category", 
+export default function CategorySelect({
+  value,
+  onSelect,
+  placeholder = "Select category",
   disabled = false,
   required = false,
-  label = "Category"
+  label = "Category",
 }: CategorySelectProps) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [createFormData, setCreateFormData] = useState<CreateCategoryData>({
-    name: '',
-    description: ''
+    name: "",
+    description: "",
   });
 
   const { toast } = useToast();
@@ -47,13 +61,24 @@ export default function CategorySelect({
   const fetchCategories = async () => {
     try {
       setLoading(true);
+      console.log("Fetching categories...");
       const response = await apiService.getCategories();
+      console.log("Categories API response:", response);
       if (response.success && response.data) {
         const categoryData = response.data as any;
-        setCategories(categoryData.categoriesWithCount || []);
+        // Fix: Use the correct property name from API response
+        const categoriesArray = categoryData.categories || [];
+        console.log("Categories loaded:", categoriesArray);
+        setCategories(categoriesArray);
+
+        if (categoriesArray.length === 0) {
+          console.warn("No categories found in database");
+        }
+      } else {
+        console.error("Failed to fetch categories:", response);
       }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      console.error("Error fetching categories:", error);
       toast({
         title: "Error",
         description: "Failed to fetch categories",
@@ -70,45 +95,46 @@ export default function CategorySelect({
 
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (creating) return;
-    
+
     setCreating(true);
-    
+
     try {
       const response = await apiService.createCategory(createFormData);
-      
+
       if (response.success && response.data) {
         const newCategory = response.data as Category;
         // Add the new category to the list
         const categoryWithCount = {
           ...newCategory,
           count: 0,
-          _id: newCategory.name || newCategory._id // Use name as _id for consistency
+          _id: newCategory.name || newCategory._id, // Use name as _id for consistency
         };
-        setCategories(prev => [categoryWithCount, ...prev]);
+        setCategories((prev) => [categoryWithCount, ...prev]);
         onSelect(newCategory.name || newCategory._id);
-        
+
         toast({
           title: "Success",
           description: "Category created successfully",
           type: "success",
         });
-        
+
         // Reset form and close dialog
         setCreateFormData({
-          name: '',
-          description: ''
+          name: "",
+          description: "",
         });
         setIsCreateDialogOpen(false);
       } else {
         throw new Error(response.message || "Failed to create category");
       }
     } catch (error) {
-      console.error('Error creating category:', error);
+      console.error("Error creating category:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to create category",
+        description:
+          error instanceof Error ? error.message : "Failed to create category",
         type: "error",
       });
     } finally {
@@ -124,18 +150,20 @@ export default function CategorySelect({
     <div className="space-y-2">
       <Label className="flex items-center">
         <BarChart3 className="h-4 w-4 mr-1" />
-        {label} {required && '*'}
+        {label} {required && "*"}
       </Label>
-      
+
       <div className="flex gap-2">
         <div className="flex-1">
           <Select
-            value={value || ''}
+            value={value || ""}
             onValueChange={handleCategoryChange}
             disabled={disabled || loading}
           >
             <SelectTrigger>
-              <SelectValue placeholder={loading ? "Loading categories..." : placeholder} />
+              <SelectValue
+                placeholder={loading ? "Loading categories..." : placeholder}
+              />
             </SelectTrigger>
             <SelectContent>
               {loading ? (
@@ -147,7 +175,9 @@ export default function CategorySelect({
                 </SelectItem>
               ) : categories.length === 0 ? (
                 <SelectItem value="no-categories" disabled>
-                  <div className="text-gray-500 text-sm">No categories available</div>
+                  <div className="text-gray-500 text-sm">
+                    No categories available
+                  </div>
                 </SelectItem>
               ) : (
                 <>
@@ -155,7 +185,9 @@ export default function CategorySelect({
                     <SelectItem key={category._id} value={category._id}>
                       <div className="flex items-center justify-between w-full">
                         <span>{category.name || category._id}</span>
-                        <span className="text-xs text-gray-500 ml-2">({category.count} items)</span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          ({category.count} items)
+                        </span>
                       </div>
                     </SelectItem>
                   ))}
@@ -164,10 +196,15 @@ export default function CategorySelect({
             </SelectContent>
           </Select>
         </div>
-        
+
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button type="button" variant="outline" size="sm" disabled={disabled}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={disabled}
+            >
               <Plus className="h-4 w-4" />
             </Button>
           </DialogTrigger>
@@ -179,37 +216,49 @@ export default function CategorySelect({
                   Create a new category for organizing your products
                 </DialogDescription>
               </DialogHeader>
-              
+
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="create-category-name">Category Name *</Label>
                   <Input
                     id="create-category-name"
                     value={createFormData.name}
-                    onChange={(e) => setCreateFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) =>
+                      setCreateFormData((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
                     placeholder="Enter category name"
                     required
                     disabled={creating}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
-                  <Label htmlFor="create-category-description">Description</Label>
+                  <Label htmlFor="create-category-description">
+                    Description
+                  </Label>
                   <Textarea
                     id="create-category-description"
                     value={createFormData.description}
-                    onChange={(e) => setCreateFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e) =>
+                      setCreateFormData((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
                     placeholder="Enter category description (optional)"
                     disabled={creating}
                     rows={3}
                   />
                 </div>
               </div>
-              
+
               <DialogFooter>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => setIsCreateDialogOpen(false)}
                   disabled={creating}
                 >
@@ -222,7 +271,7 @@ export default function CategorySelect({
                       Creating...
                     </>
                   ) : (
-                    'Create Category'
+                    "Create Category"
                   )}
                 </Button>
               </DialogFooter>
@@ -230,12 +279,14 @@ export default function CategorySelect({
           </DialogContent>
         </Dialog>
       </div>
-      
+
       {value && (
         <div className="text-sm text-gray-600 p-2 bg-gray-50 rounded border">
           <div className="font-medium">{value}</div>
-          {categories.find(c => c._id === value)?.description && (
-            <div className="text-xs">{categories.find(c => c._id === value)?.description}</div>
+          {categories.find((c) => c._id === value)?.description && (
+            <div className="text-xs">
+              {categories.find((c) => c._id === value)?.description}
+            </div>
           )}
         </div>
       )}
