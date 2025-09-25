@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { InventoryLayout } from "@/layouts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -69,6 +69,14 @@ export default function Products() {
   const [searchDebounceTimer, setSearchDebounceTimer] =
     useState<NodeJS.Timeout | null>(null);
 
+  // Cleanup function for debounce timer
+  const cleanupDebounceTimer = () => {
+    if (searchDebounceTimer) {
+      clearTimeout(searchDebounceTimer);
+      setSearchDebounceTimer(null);
+    }
+  };
+
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
@@ -89,6 +97,7 @@ export default function Products() {
           if (Array.isArray(productData)) {
             setProducts(productData);
           } else {
+            console.warn("Products data is not an array:", productData);
             setProducts([]);
           }
 
@@ -97,6 +106,7 @@ export default function Products() {
             setPagination(paginationData);
           }
         } else {
+          console.warn("Products response unsuccessful:", productsResponse);
           setProducts([]);
         }
 
@@ -106,9 +116,11 @@ export default function Products() {
           if (Array.isArray(categoryData)) {
             setCategories(categoryData);
           } else {
+            console.warn("Categories data is not an array:", categoryData);
             setCategories([]);
           }
         } else {
+          console.warn("Categories response unsuccessful:", categoriesResponse);
           setCategories([]);
         }
 
@@ -119,6 +131,7 @@ export default function Products() {
         ) {
           setSuppliers(suppliersResponse.data);
         } else {
+          console.warn("Suppliers response unsuccessful:", suppliersResponse);
           setSuppliers([]);
         }
       } catch (err) {
@@ -146,9 +159,7 @@ export default function Products() {
 
   const handleFilterChange = (key: keyof ProductFilters, value: any) => {
     // Clear existing search debounce timer
-    if (searchDebounceTimer) {
-      clearTimeout(searchDebounceTimer);
-    }
+    cleanupDebounceTimer();
 
     // For search, use debouncing to avoid too many API calls
     if (key === "search") {
@@ -171,9 +182,7 @@ export default function Products() {
   };
 
   const clearFilters = () => {
-    if (searchDebounceTimer) {
-      clearTimeout(searchDebounceTimer);
-    }
+    cleanupDebounceTimer();
     setFilters({
       page: 1,
       limit: 10,
@@ -184,14 +193,10 @@ export default function Products() {
 
   // Cleanup debounce timer on unmount
   useEffect(() => {
-    return () => {
-      if (searchDebounceTimer) {
-        clearTimeout(searchDebounceTimer);
-      }
-    };
-  }, [searchDebounceTimer]);
+    return cleanupDebounceTimer;
+  }, []);
 
-  const refreshProducts = async () => {
+  const refreshProducts = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -203,6 +208,7 @@ export default function Products() {
         if (Array.isArray(productData)) {
           setProducts(productData);
         } else {
+          console.warn("Refresh: Products data is not an array:", productData);
           setProducts([]);
         }
 
@@ -210,6 +216,10 @@ export default function Products() {
           setPagination(paginationData);
         }
       } else {
+        console.warn(
+          "Refresh: Products response unsuccessful:",
+          productsResponse
+        );
         setProducts([]);
       }
     } catch (err) {
@@ -220,7 +230,7 @@ export default function Products() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-IN", {
@@ -238,11 +248,13 @@ export default function Products() {
   };
 
   const getSupplierName = (supplier: Product["supplier"]) => {
-    return typeof supplier === "string" ? supplier : supplier.name;
+    if (!supplier) return "N/A";
+    return typeof supplier === "string" ? supplier : supplier.name || "N/A";
   };
 
   const getSupplierContact = (supplier: Product["supplier"]) => {
-    return typeof supplier === "string" ? "" : supplier.contact || "";
+    if (!supplier || typeof supplier === "string") return "";
+    return supplier.contact || "";
   };
 
   // Keyboard shortcuts
@@ -682,15 +694,22 @@ export default function Products() {
                                 <div className="font-medium text-gray-900">
                                   {product.name}
                                 </div>
-                                <div className="text-sm text-gray-500">
-                                  {product.description?.substring(0, 50)}...
-                                </div>
+                                {product.description && (
+                                  <div className="text-sm text-gray-500">
+                                    {product.description.length > 50
+                                      ? `${product.description.substring(
+                                          0,
+                                          50
+                                        )}...`
+                                      : product.description}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </TableCell>
                           <TableCell>
                             <Badge variant="secondary">
-                              {product.category}
+                              {product.category || "Uncategorized"}
                             </Badge>
                           </TableCell>
                           <TableCell className="font-mono text-sm">
@@ -768,14 +787,28 @@ export default function Products() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => {
-                                  // TODO: Implement delete with confirmation
-                                  if (
-                                    window.confirm(
-                                      `Are you sure you want to delete ${product.name}?`
-                                    )
-                                  ) {
-                                    // console.log('Delete product:', product._id);
+                                onClick={async () => {
+                                  try {
+                                    if (
+                                      window.confirm(
+                                        `Are you sure you want to delete ${product.name}?\n\nThis action cannot be undone.`
+                                      )
+                                    ) {
+                                      // TODO: Implement actual delete functionality
+                                      console.log(
+                                        "Delete product:",
+                                        product._id
+                                      );
+                                      // After successful delete, refresh the products list
+                                      // await deleteProduct(product._id);
+                                      // refreshProducts();
+                                    }
+                                  } catch (error) {
+                                    console.error(
+                                      "Error deleting product:",
+                                      error
+                                    );
+                                    // Show error toast/notification
                                   }
                                 }}
                                 className="text-red-600 hover:text-red-700"
@@ -893,14 +926,16 @@ function ProductDetailsModal({
   const stockStatus = getStockStatus(product);
 
   const getSupplierName = (supplier: Product["supplier"]) => {
-    return typeof supplier === "string" ? supplier : supplier.name;
+    if (!supplier) return "N/A";
+    return typeof supplier === "string" ? supplier : supplier.name || "N/A";
   };
 
   const getSupplierField = (
     supplier: Product["supplier"],
     field: "contact" | "email" | "phone"
   ) => {
-    return typeof supplier === "string" ? "" : supplier[field] || "";
+    if (!supplier || typeof supplier === "string") return "";
+    return supplier[field] || "";
   };
 
   return (
@@ -987,11 +1022,13 @@ function ProductDetailsModal({
                   Profit Margin
                 </label>
                 <p className="text-lg font-semibold text-blue-600">
-                  {(
-                    ((product.sellingPrice - product.costPrice) /
-                      product.costPrice) *
-                    100
-                  ).toFixed(1)}
+                  {product.costPrice > 0
+                    ? (
+                        ((product.sellingPrice - product.costPrice) /
+                          product.costPrice) *
+                        100
+                      ).toFixed(1)
+                    : "0.0"}
                   %
                 </p>
               </div>
