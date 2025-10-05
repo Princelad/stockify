@@ -23,10 +23,13 @@ import {
   PackagePlus,
   Receipt,
   Zap,
-  Truck
+  Truck,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getCurrentUser, clearAuthData } from '@/lib/api';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface NavItem {
   label: string;
@@ -166,7 +169,7 @@ const Sidebar: React.FC<{
   return (
     <aside 
       className={cn(
-        "h-screen bg-white border-r flex flex-col py-6 shadow-sm transition-all duration-300 ease-in-out overflow-hidden",
+        "h-screen bg-sidebar border-r border-sidebar-border flex flex-col py-6 shadow-sm transition-all duration-300 ease-in-out overflow-hidden",
         "fixed lg:relative z-50 lg:z-auto",
         isCollapsed ? `${sidebarWidth} ${sidebarPadding} -translate-x-full lg:translate-x-0` : `${sidebarWidth} ${sidebarPadding} translate-x-0`
       )}
@@ -174,7 +177,7 @@ const Sidebar: React.FC<{
       onMouseLeave={onMouseLeave}
     >
       <div className={cn(
-        "font-bold mb-8 tracking-tight text-gray-800 hover:text-blue-600 transition-colors duration-200 flex items-center justify-center min-h-[32px]",
+        "font-bold mb-8 tracking-tight text-sidebar-foreground hover:text-sidebar-primary transition-colors duration-200 flex items-center justify-center min-h-[32px]",
         shouldShowExpandedContent ? "text-2xl" : "text-lg text-center"
       )}>
         {shouldShowText ? (
@@ -238,8 +241,8 @@ const Sidebar: React.FC<{
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 min-h-[40px]',
                 activeSection === item.label 
-                  ? 'bg-blue-50 text-blue-700 font-semibold' 
-                  : 'text-gray-700 hover:bg-blue-50 hover:text-blue-600',
+                  ? 'bg-sidebar-accent text-sidebar-accent-foreground font-semibold' 
+                  : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                 !shouldShowText ? 'justify-center' : undefined
               )}
               onClick={() => {
@@ -277,7 +280,7 @@ const Sidebar: React.FC<{
                   {item.children.map((child) => (
                     <div 
                       key={child.label} 
-                      className="text-gray-500 text-sm px-2 py-1 rounded hover:bg-blue-50 cursor-pointer transition-all duration-150 hover:text-blue-600 hover:translate-x-1 whitespace-nowrap overflow-hidden text-ellipsis"
+                      className="text-sidebar-foreground/70 text-sm px-2 py-1 rounded hover:bg-sidebar-accent cursor-pointer transition-all duration-150 hover:text-sidebar-accent-foreground hover:translate-x-1 whitespace-nowrap overflow-hidden text-ellipsis"
                       onClick={() => handleNavigation(child.route)}
                     >
                       {child.label}
@@ -346,9 +349,16 @@ const Sidebar: React.FC<{
 };
 
 // Internal Topbar Component
-const Topbar: React.FC<{ onSidebarToggle: () => void; isCollapsed: boolean }> = ({ 
+const Topbar: React.FC<{ 
+  onSidebarToggle: () => void; 
+  isCollapsed: boolean;
+  toggleTheme: () => void;
+  isDarkMode: boolean;
+}> = ({ 
   onSidebarToggle, 
-  isCollapsed 
+  isCollapsed,
+  toggleTheme,
+  isDarkMode
 }) => {
   const [showProfileDropdown, setShowProfileDropdown] = useState<boolean>(false);
   const user = getCurrentUser() as User | null;
@@ -371,92 +381,106 @@ const Topbar: React.FC<{ onSidebarToggle: () => void; isCollapsed: boolean }> = 
   };
 
   return (
-    <header className="flex items-center justify-between px-8 py-4 bg-white border-b shadow-sm">
+    <header className="flex items-center justify-between px-8 py-4 bg-card border-b border-border shadow-sm">
       <div className="flex items-center gap-4 w-1/2">
         {/* Hamburger Menu Button */}
         <button
           onClick={onSidebarToggle}
-          className="p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200 lg:hidden"
+          className="p-2 rounded-lg hover:bg-accent transition-colors duration-200 lg:hidden"
           aria-label="Toggle sidebar"
         >
           {isCollapsed ? (
-            <Menu className="h-5 w-5 text-gray-600" />
+            <Menu className="h-5 w-5 text-foreground" />
           ) : (
-            <X className="h-5 w-5 text-gray-600" />
+            <X className="h-5 w-5 text-foreground" />
           )}
         </button>
         
         {/* Desktop hamburger (always visible) */}
         <button
           onClick={onSidebarToggle}
-          className="hidden lg:block p-2 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+          className="hidden lg:block p-2 rounded-lg hover:bg-accent transition-colors duration-200"
           aria-label="Toggle sidebar"
         >
-          <Menu className="h-5 w-5 text-gray-600" />
+          <Menu className="h-5 w-5 text-foreground" />
         </button>
         
-        <Store className="h-6 w-6 text-blue-600" />
-        <span className="font-semibold text-lg">Stockify Store</span>
+        <Store className="h-6 w-6 text-primary" />
+        <span className="font-semibold text-lg text-foreground">Stockify Store</span>
         <div className="flex-1 relative">
           <input
             type="search"
-            className="w-full pl-10 pr-4 py-2 rounded-lg border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-200 transition-all duration-200"
+            className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all duration-200"
             placeholder="Search products, invoices..."
             aria-label="Search products and invoices"
           />
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
         </div>
       </div>
       
       <div className="flex items-center gap-4">
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg hover:bg-accent transition-colors duration-200"
+          title={`Switch to ${isDarkMode ? 'light' : 'dark'} mode`}
+          aria-label="Toggle theme"
+        >
+          {isDarkMode ? (
+            <Sun className="h-5 w-5 text-foreground" />
+          ) : (
+            <Moon className="h-5 w-5 text-foreground" />
+          )}
+        </button>
+        
         {/* Notifications */}
         <button 
-          className="relative p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+          className="relative p-2 rounded-lg hover:bg-accent transition-colors duration-200"
           aria-label="Notifications"
         >
-          <Bell className="h-5 w-5 text-gray-500" />
+          <Bell className="h-5 w-5 text-muted-foreground" />
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
         </button>
         
         {/* Profile Dropdown */}
         <div className="relative">
           <button 
-            className="flex items-center gap-2 p-2 rounded-full hover:bg-gray-100 transition-colors duration-200"
+            className="flex items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors duration-200"
             onClick={toggleProfileDropdown}
             aria-expanded={showProfileDropdown}
             aria-haspopup="menu"
           >
-            <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700">
+            <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center font-bold text-primary">
               {getUserInitial(user?.name)}
             </div>
-            <span className="hidden md:block font-medium text-gray-700">
+            <span className="hidden md:block font-medium text-foreground">
               {user?.name || 'User'}
             </span>
           </button>
 
           {/* Dropdown Menu */}
           {showProfileDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white border rounded-lg shadow-lg z-50">
-              <div className="p-3 border-b">
-                <div className="font-medium text-gray-900">{user?.name || 'User'}</div>
-                <div className="text-sm text-gray-500">{user?.email || 'user@example.com'}</div>
+            <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-50">
+              <div className="p-3 border-b border-border">
+                <div className="font-medium text-foreground">{user?.name || 'User'}</div>
+                <div className="text-sm text-muted-foreground">{user?.email || 'user@example.com'}</div>
               </div>
               <div className="py-1" role="menu">
                 <button 
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 transition-colors duration-150" 
+                  className="w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2 transition-colors duration-150 text-foreground" 
                   role="menuitem"
                 >
                   <User className="h-4 w-4" />
                   Profile
                 </button>
                 <button 
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 transition-colors duration-150" 
+                  className="w-full text-left px-4 py-2 hover:bg-accent flex items-center gap-2 transition-colors duration-150 text-foreground" 
                   role="menuitem"
                 >
                   <Settings className="h-4 w-4" />
                   Settings
                 </button>
-                <hr className="my-1" />
+                <hr className="my-1 border-border" />
                 <button 
                   onClick={handleLogout}
                   className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-red-600 transition-colors duration-150"
@@ -489,6 +513,7 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
   activeSection = 'Dashboard',
 }) => {
   const navigate = useNavigate();
+  const { toggleTheme, isDarkMode } = useTheme();
   
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // Check localStorage for saved preference, fallback to mobile detection
@@ -590,7 +615,7 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
   }, []);
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-50 flex">
+    <div className="h-screen overflow-hidden bg-background flex">
       {/* Sidebar */}
       <Sidebar 
         activeSection={activeSection} 
@@ -611,10 +636,12 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
         <Topbar 
           onSidebarToggle={toggleSidebar}
           isCollapsed={isCollapsed}
+          toggleTheme={toggleTheme}
+          isDarkMode={isDarkMode}
         />
         
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-background">
           {children}
         </main>
       </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { InventoryLayout } from '@/layouts';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -36,7 +37,10 @@ import {
   Download,
   RefreshCw,
   Plus,
-  BarChart3
+  BarChart3,
+  Moon,
+  Sun,
+  Monitor
 } from 'lucide-react';
 
 interface UserStats {
@@ -67,6 +71,7 @@ interface UserPreferences {
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
+  const { setTheme, theme, actualTheme, isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [saveLoading, setSaveLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(false);
@@ -260,6 +265,12 @@ export default function Profile() {
     const newPreferences = { ...preferences, [key]: value };
     setPreferences(newPreferences);
     
+    // Handle dark mode preference change with ThemeContext integration
+    if (key === 'darkMode') {
+      const newTheme = value ? 'dark' : 'light';
+      setTheme(newTheme);
+    }
+    
     try {
       const response = await apiService.updateUserPreferences(newPreferences);
       if (response.success) {
@@ -273,6 +284,11 @@ export default function Profile() {
       setMessage({ type: 'error', text: error.message || 'Failed to update preferences' });
       // Revert preferences on error
       setPreferences(prev => ({ ...prev, [key]: prev[key] }));
+      // Revert theme change on error
+      if (key === 'darkMode') {
+        const revertTheme = preferences.darkMode ? 'dark' : 'light';
+        setTheme(revertTheme);
+      }
     }
   };
 
@@ -929,16 +945,61 @@ export default function Profile() {
                     {/* Display Preferences */}
                     <div>
                       <h4 className="font-medium mb-4">Display Settings</h4>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <span className="font-medium">Dark Mode</span>
-                            <p className="text-sm text-gray-600">Use dark theme for the interface</p>
+                      <div className="space-y-6">
+                        {/* Theme Selection */}
+                        <div>
+                          <div className="flex items-center space-x-2 mb-3">
+                            {actualTheme === 'dark' ? (
+                              <Moon className="h-5 w-5 text-blue-500" />
+                            ) : (
+                              <Sun className="h-5 w-5 text-yellow-500" />
+                            )}
+                            <span className="font-medium">Theme Preference</span>
                           </div>
-                          <Switch
-                            checked={preferences.darkMode}
-                            onCheckedChange={(checked) => handlePreferenceChange('darkMode', checked)}
-                          />
+                          <p className="text-sm text-muted-foreground mb-4">
+                            Choose your preferred theme or follow system settings
+                          </p>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {[
+                              { key: 'light', label: 'Light', icon: Sun, description: 'Light theme' },
+                              { key: 'dark', label: 'Dark', icon: Moon, description: 'Dark theme' },
+                              { key: 'system', label: 'System', icon: Monitor, description: 'Follow system' }
+                            ].map(({ key, label, icon: Icon, description }) => (
+                              <button
+                                key={key}
+                                onClick={() => {
+                                  setTheme(key as any);
+                                  // Update preferences to sync with backend
+                                  if (key !== 'system') {
+                                    handlePreferenceChange('darkMode', key === 'dark');
+                                  }
+                                }}
+                                className={`p-4 rounded-lg border-2 transition-all hover:border-blue-300 ${
+                                  theme === key
+                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                                    : 'border-border hover:bg-accent'
+                                }`}
+                              >
+                                <Icon className={`h-6 w-6 mx-auto mb-2 ${
+                                  theme === key ? 'text-blue-500' : 'text-muted-foreground'
+                                }`} />
+                                <div className="text-sm font-medium">{label}</div>
+                                <div className="text-xs text-muted-foreground mt-1">{description}</div>
+                              </button>
+                            ))}
+                          </div>
+                          
+                          {theme === 'system' && (
+                            <div className="mt-3 p-3 bg-muted rounded-md">
+                              <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                                <Monitor className="h-4 w-4" />
+                                <span>
+                                  Currently using <strong>{actualTheme}</strong> theme based on your system settings
+                                </span>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

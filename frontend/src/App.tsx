@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ProtectedRoute } from '@/components/common/ProtectedRoute';
 import Landing from '@/pages/Landing';
 import Login from '@/pages/Login';
@@ -25,148 +26,150 @@ import AuthCallback from '@/pages/AuthCallback';
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen">
-          <Routes>
-            {/* Public routes */}
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/about" element={<Aboutus />} />
-            <Route path="/contact" element={<Contactus />} />
-            
-            {/* Protected routes */}
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/products" 
-              element={
-                <ProtectedRoute>
-                  <Products />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/categories" 
-              element={
-                <ProtectedRoute>
-                  <Categories />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/billing" 
-              element={
-                <ProtectedRoute>
-                  <Billing />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/customers" 
-              element={
-                <ProtectedRoute>
-                  <Customers />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/suppliers" 
-              element={
-                <ProtectedRoute>
-                  <Suppliers />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/reports" 
-              element={
-                <ProtectedRoute>
-                  <Reports />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/reports/sales" 
-              element={
-                <ProtectedRoute>
-                  <SalesReport />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/reports/inventory" 
-              element={
-                <ProtectedRoute>
-                  <InventoryReport />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/reports/tax" 
-              element={
-                <ProtectedRoute>
-                  <TaxReport />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/barcode" 
-              element={
-                <ProtectedRoute>
-                  <BarcodeGenerator />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/labels" 
-              element={
-                <ProtectedRoute>
-                  <LabelPrinting />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/profile" 
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/settings" 
-              element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Redirect /app to /dashboard for authenticated users */}
-            <Route 
-              path="/app" 
-              element={
-                <ProtectedRoute>
-                  <Navigate to="/dashboard" replace />
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Catch all route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
-      </Router>
-    </AuthProvider>
+    <ThemeProvider defaultTheme="system" storageKey="stockify-theme">
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-background text-foreground">
+            <Routes>
+              {/* Public routes */}
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route path="/" element={<Landing />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/about" element={<Aboutus />} />
+              <Route path="/contact" element={<Contactus />} />
+              
+              {/* Protected routes */}
+              <Route 
+                path="/dashboard" 
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/products" 
+                element={
+                  <ProtectedRoute>
+                    <Products />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/categories" 
+                element={
+                  <ProtectedRoute>
+                    <Categories />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/billing" 
+                element={
+                  <ProtectedRoute>
+                    <Billing />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/customers" 
+                element={
+                  <ProtectedRoute>
+                    <Customers />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/suppliers" 
+                element={
+                  <ProtectedRoute>
+                    <Suppliers />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/reports" 
+                element={
+                  <ProtectedRoute>
+                    <Reports />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/reports/sales" 
+                element={
+                  <ProtectedRoute>
+                    <SalesReport />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/reports/inventory" 
+                element={
+                  <ProtectedRoute>
+                    <InventoryReport />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/reports/tax" 
+                element={
+                  <ProtectedRoute>
+                    <TaxReport />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/barcode" 
+                element={
+                  <ProtectedRoute>
+                    <BarcodeGenerator />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/labels" 
+                element={
+                  <ProtectedRoute>
+                    <LabelPrinting />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/settings" 
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Redirect /app to /dashboard for authenticated users */}
+              <Route 
+                path="/app" 
+                element={
+                  <ProtectedRoute>
+                    <Navigate to="/dashboard" replace />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              {/* Catch all route */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </div>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
