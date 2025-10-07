@@ -65,6 +65,7 @@ export default function Products() {
     sortOrder: "desc",
   });
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [searchDebounceTimer, setSearchDebounceTimer] =
     useState<NodeJS.Timeout | null>(null);
@@ -777,8 +778,8 @@ export default function Products() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => {
-                                  // TODO: Implement edit functionality
-                                  // console.log('Edit product:', product._id);
+                                  setEditingProduct(product);
+                                  setShowAddProduct(true);
                                 }}
                                 title="Edit Product"
                               >
@@ -875,16 +876,29 @@ export default function Products() {
         )}
       </div>
 
-      {/* Add Product Modal */}
-      <Dialog open={showAddProduct} onOpenChange={setShowAddProduct}>
+      {/* Add/Edit Product Modal */}
+      <Dialog
+        open={showAddProduct}
+        onOpenChange={(open) => {
+          setShowAddProduct(open);
+          if (!open) {
+            setEditingProduct(null); // Clear editing state when dialog closes
+          }
+        }}
+      >
         <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto p-0">
           <AddProductForm
+            editProduct={editingProduct}
             onSuccess={() => {
               setShowAddProduct(false);
+              setEditingProduct(null);
               // Refresh the products list instead of full page reload
               refreshProducts();
             }}
-            onCancel={() => setShowAddProduct(false)}
+            onCancel={() => {
+              setShowAddProduct(false);
+              setEditingProduct(null);
+            }}
           />
         </DialogContent>
       </Dialog>

@@ -35,11 +35,13 @@ import {
 interface AddProductFormProps {
   onSuccess?: (product: any) => void;
   onCancel?: () => void;
+  editProduct?: any; // Product to edit (null/undefined for add mode)
 }
 
 export default function AddProductForm({
   onSuccess,
   onCancel,
+  editProduct,
 }: AddProductFormProps) {
   const { toast } = useToast();
 
@@ -81,6 +83,37 @@ export default function AddProductForm({
 
   // Add states for suggestions
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+
+  // Effect to populate form when editing
+  useEffect(() => {
+    if (editProduct) {
+      setFormData({
+        name: editProduct.name || "",
+        description: editProduct.description || "",
+        category: editProduct.category || "",
+        brand: editProduct.brand || "",
+        sku: editProduct.sku || "",
+        barcode: editProduct.barcode || "",
+        costPrice: editProduct.costPrice || 0,
+        sellingPrice: editProduct.sellingPrice || 0,
+        wholesalePrice: editProduct.wholesalePrice || 0,
+        currentStock: editProduct.currentStock || 0,
+        minStockLevel: editProduct.minStockLevel || 10,
+        maxStockLevel: editProduct.maxStockLevel || 1000,
+        weight: editProduct.weight || 0,
+        dimensions: editProduct.dimensions || {
+          length: 0,
+          width: 0,
+          height: 0,
+        },
+      });
+
+      // Set supplier if exists
+      if (editProduct.supplier) {
+        setSelectedSupplier(editProduct.supplier);
+      }
+    }
+  }, [editProduct]);
   const [brandSuggestions, setBrandSuggestions] = useState<string[]>([]);
   const [skuSuggestions, setSkuSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState<{
@@ -358,15 +391,29 @@ export default function AddProductForm({
       // Debug logging
       console.log("Form data being submitted:", cleanedFormData);
 
-      const response = await apiService.createProduct(cleanedFormData);
+      let response;
+      if (editProduct) {
+        // Update existing product
+        response = await apiService.updateProduct(
+          editProduct._id,
+          cleanedFormData
+        );
+      } else {
+        // Create new product
+        response = await apiService.createProduct(cleanedFormData);
+      }
       console.log("API response:", response);
 
       if (response.success) {
         // Show success toast
         toast({
           type: "success",
-          title: "Product Created Successfully!",
-          description: `${formData.name} has been added to your inventory.`,
+          title: editProduct
+            ? "Product Updated Successfully!"
+            : "Product Created Successfully!",
+          description: `${formData.name} has been ${
+            editProduct ? "updated" : "added to your inventory"
+          }.`,
           duration: 5000,
         });
 
@@ -398,18 +445,23 @@ export default function AddProductForm({
         setSelectedSupplier(null);
       } else {
         console.error("API Error:", response);
-        throw new Error(response.message || "Failed to create product");
+        throw new Error(
+          response.message ||
+            `Failed to ${editProduct ? "update" : "create"} product`
+        );
       }
     } catch (error) {
       console.error("Submit Error:", error);
       const errorMessage =
-        error instanceof Error ? error.message : "Failed to create product";
+        error instanceof Error
+          ? error.message
+          : `Failed to ${editProduct ? "update" : "create"} product`;
       setError(errorMessage);
 
       // Show error toast
       toast({
         type: "error",
-        title: "Failed to Create Product",
+        title: `Failed to ${editProduct ? "Update" : "Create"} Product`,
         description: errorMessage,
         duration: 5000,
       });
@@ -427,7 +479,7 @@ export default function AddProductForm({
           </div>
         </div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Add New Product
+          {editProduct ? "Edit Product" : "Add New Product"}
         </h1>
         <p className="text-gray-600">
           Fill in the product details to add it to your inventory
@@ -1172,12 +1224,14 @@ export default function AddProductForm({
                 {loading ? (
                   <>
                     <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                    Creating Product...
+                    {editProduct
+                      ? "Updating Product..."
+                      : "Creating Product..."}
                   </>
                 ) : (
                   <>
                     <Save className="h-5 w-5 mr-2" />
-                    Create Product
+                    {editProduct ? "Update Product" : "Create Product"}
                   </>
                 )}
               </Button>

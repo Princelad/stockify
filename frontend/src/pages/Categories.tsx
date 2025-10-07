@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { InventoryLayout } from "@/layouts";
+import { useToast } from "@/hooks/useToast";
+import { exportToCSV, exportToPDF } from "@/lib/utils/exportUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +38,7 @@ import {
 } from "lucide-react";
 
 export default function Categories() {
+  const { toast } = useToast();
   const [categories, setCategories] = useState<Category[]>([]);
   const [popularCategories, setPopularCategories] = useState<Category[]>([]);
   const [userCategories, setUserCategories] = useState<Category[]>([]);
@@ -163,14 +166,20 @@ export default function Categories() {
 
   const handleDelete = async (category: Category) => {
     if (category.type !== "user_created") {
-      alert("Only user-created categories can be deleted.");
+      toast({
+        title: "Cannot Delete Category",
+        description: "Only user-created categories can be deleted.",
+        type: "error",
+      });
       return;
     }
 
     if (category.count > 0) {
-      alert(
-        `Cannot delete category "${category.name}". It is being used by ${category.count} product(s).`
-      );
+      toast({
+        title: "Cannot Delete Category",
+        description: `Cannot delete category "${category.name}". It is being used by ${category.count} product(s).`,
+        type: "error",
+      });
       return;
     }
 
@@ -251,26 +260,62 @@ export default function Categories() {
     setSelectedCategories(newSelection);
   };
 
-  const exportCategories = () => {
-    const csvContent = [
-      ["Name", "Description", "Type", "Product Count"].join(","),
-      ...filteredCategories.map((cat) =>
-        [
-          `"${cat.name}"`,
-          `"${cat.description || ""}"`,
-          `"${getCategoryTypeLabel(cat)}"`,
-          cat.count,
-        ].join(",")
-      ),
-    ].join("\n");
+  const handleExport = async (format: "csv" | "pdf") => {
+    toast({
+      title: "Export Started",
+      description: `Exporting Categories as ${format.toUpperCase()}...`,
+      type: "info",
+    });
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "categories.csv";
-    a.click();
-    window.URL.revokeObjectURL(url);
+    try {
+      // Prepare data for export
+      const exportData = filteredCategories.map((cat) => ({
+        Name: cat.name,
+        Description: cat.description || "",
+        Type: getCategoryTypeLabel(cat),
+        "Product Count": cat.count.toString(),
+        "Is Popular": cat.isPopular ? "Yes" : "No",
+      }));
+
+      const headers = [
+        "Name",
+        "Description",
+        "Type",
+        "Product Count",
+        "Is Popular",
+      ];
+
+      let result;
+      if (format === "csv") {
+        result = exportToCSV({
+          filename: `categories-${new Date().toISOString().split("T")[0]}`,
+          data: exportData,
+          headers,
+        });
+      } else {
+        result = await exportToPDF({
+          filename: `Categories Report - ${new Date().toLocaleDateString()}`,
+          data: exportData,
+          headers,
+        });
+      }
+
+      if (result.success) {
+        toast({
+          title: "Export Complete",
+          description: result.message,
+          type: "success",
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export categories. Please try again.",
+        type: "error",
+      });
+    }
   };
 
   if (loading) {
@@ -328,9 +373,21 @@ export default function Categories() {
               </p>
             </div>
             <div className="flex space-x-2">
-              <Button variant="outline" onClick={exportCategories}>
+              <Button
+                variant="outline"
+                onClick={() => handleExport("csv")}
+                disabled={loading}
+              >
                 <Download className="h-4 w-4 mr-2" />
-                Export CSV
+                Excel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => handleExport("pdf")}
+                disabled={loading}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                PDF
               </Button>
               <Button
                 variant="outline"

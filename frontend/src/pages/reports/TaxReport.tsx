@@ -1,21 +1,26 @@
-import { useState, useEffect } from 'react';
-import { InventoryLayout } from '@/layouts';
-import { 
-  Receipt, 
-  Download, 
-  Calendar, 
+import { useState, useEffect } from "react";
+import { InventoryLayout } from "@/layouts";
+import {
+  exportToCSV,
+  exportToPDF,
+  prepareTaxDataForExport,
+} from "@/lib/utils/exportUtils";
+import {
+  Receipt,
+  Download,
+  Calendar,
   TrendingUp,
   FileText,
   ArrowUpRight,
   AlertCircle,
   CheckCircle,
   DollarSign,
-  AlertTriangle
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
+  AlertTriangle,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   BarChart,
   Bar,
@@ -26,10 +31,10 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell
-} from 'recharts';
-import { apiService } from '@/lib/api';
-import { useToast } from '@/hooks/useToast';
+  Cell,
+} from "recharts";
+import { apiService } from "@/lib/api";
+import { useToast } from "@/hooks/useToast";
 
 interface TaxSummary {
   period: string;
@@ -58,11 +63,12 @@ interface TaxReturn {
   gstr1Filed: boolean;
   gstr3bFiled: boolean;
   dueDate: string;
-  status: 'filed' | 'pending' | 'overdue';
+  status: "filed" | "pending" | "overdue";
 }
 
 export default function TaxReport() {
-  const [selectedPeriod, setSelectedPeriod] = useState('last30days');
+  const { toast } = useToast();
+  const [selectedPeriod, setSelectedPeriod] = useState("last30days");
   const [taxData, setTaxData] = useState<TaxSummary[]>([]);
   const [gstRates, setGstRates] = useState<GstRate[]>([]);
   const [taxReturns, setTaxReturns] = useState<TaxReturn[]>([]);
@@ -73,18 +79,17 @@ export default function TaxReport() {
     totalTaxableAmount: 0,
     totalTransactions: 0,
     pendingReturns: 0,
-    complianceScore: 0
+    complianceScore: 0,
   });
-  const { toast } = useToast();
 
   const periods = [
-    { value: 'today', label: 'Today' },
-    { value: 'yesterday', label: 'Yesterday' },
-    { value: 'last7days', label: 'Last 7 days' },
-    { value: 'last30days', label: 'Last 30 days' },
-    { value: 'last90days', label: 'Last 3 months' },
-    { value: 'lastyear', label: 'Last year' },
-    { value: 'custom', label: 'Custom Range' }
+    { value: "today", label: "Today" },
+    { value: "yesterday", label: "Yesterday" },
+    { value: "last7days", label: "Last 7 days" },
+    { value: "last30days", label: "Last 30 days" },
+    { value: "last90days", label: "Last 3 months" },
+    { value: "lastyear", label: "Last year" },
+    { value: "custom", label: "Custom Range" },
   ];
 
   useEffect(() => {
@@ -94,58 +99,122 @@ export default function TaxReport() {
   const fetchTaxData = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const response = await apiService.getTaxReport({
-        period: selectedPeriod
+        period: selectedPeriod,
       });
-      
+
       if (response.success && response.data) {
         const data = response.data;
         setTaxData(data.taxData);
-        
+
         // Transform GST rates data
-        const transformedGstRates = data.gstRates.map((rate: any, index: number) => ({
-          ...rate,
-          color: getGstRateColor(index)
-        }));
+        const transformedGstRates = data.gstRates.map(
+          (rate: any, index: number) => ({
+            ...rate,
+            color: getGstRateColor(index),
+          })
+        );
         setGstRates(transformedGstRates);
-        
+
         setTaxReturns(data.taxReturns);
         setSummary(data.summary);
       } else {
-        throw new Error(response.message || 'Failed to fetch tax data');
+        throw new Error(response.message || "Failed to fetch tax data");
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch tax data';
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to fetch tax data";
       setError(errorMessage);
       toast({
-        title: 'Error',
+        title: "Error",
         description: errorMessage,
-        type: 'error'
+        type: "error",
       });
-      console.error('Error fetching tax data:', error);
+      console.error("Error fetching tax data:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const getGstRateColor = (index: number) => {
-    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#F97316'];
+    const colors = [
+      "#3B82F6",
+      "#10B981",
+      "#F59E0B",
+      "#EF4444",
+      "#8B5CF6",
+      "#F97316",
+    ];
     return colors[index % colors.length];
   };
 
-  const handleExport = (format: 'pdf' | 'excel') => {
-    alert(`Exporting Tax Report as ${format.toUpperCase()}...`);
+  const handleExport = async (format: "pdf" | "excel") => {
+    toast({
+      title: "Export Started",
+      description: `Exporting Tax Report as ${format.toUpperCase()}...`,
+      type: "info",
+    });
+
+    try {
+      // Prepare data for export
+      const exportData = prepareTaxDataForExport(gstRates);
+      const headers = [
+        "Period",
+        "GST Rate",
+        "Taxable Amount",
+        "CGST",
+        "SGST",
+        "IGST",
+        "Total Tax",
+        "Transactions",
+      ];
+
+      let result;
+      if (format === "excel") {
+        // Export as CSV (Excel-compatible)
+        result = exportToCSV({
+          filename: `tax-report-${selectedPeriod}-${
+            new Date().toISOString().split("T")[0]
+          }`,
+          data: exportData,
+          headers,
+        });
+      } else {
+        // Export as PDF
+        result = await exportToPDF({
+          filename: `Tax Report - ${selectedPeriod}`,
+          data: exportData,
+          headers,
+        });
+      }
+
+      if (result.success) {
+        toast({
+          title: "Export Complete",
+          description: result.message,
+          type: "success",
+        });
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      toast({
+        title: "Export Failed",
+        description: "Failed to export tax report. Please try again.",
+        type: "error",
+      });
+    }
   };
 
   const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`;
 
   const getStatusBadge = (status: string) => {
     const badges = {
-      filed: { label: 'Filed', color: 'bg-green-100 text-green-800' },
-      pending: { label: 'Pending', color: 'bg-yellow-100 text-yellow-800' },
-      overdue: { label: 'Overdue', color: 'bg-red-100 text-red-800' }
+      filed: { label: "Filed", color: "bg-green-100 text-green-800" },
+      pending: { label: "Pending", color: "bg-yellow-100 text-yellow-800" },
+      overdue: { label: "Overdue", color: "bg-red-100 text-red-800" },
     };
     return badges[status as keyof typeof badges];
   };
@@ -161,20 +230,22 @@ export default function TaxReport() {
                 <Receipt className="h-6 w-6 text-purple-600" />
                 Tax Report
               </h1>
-              <p className="text-gray-600 mt-1">GST analysis and tax compliance tracking</p>
+              <p className="text-gray-600 mt-1">
+                GST analysis and tax compliance tracking
+              </p>
             </div>
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => handleExport('excel')}
+              <Button
+                variant="outline"
+                onClick={() => handleExport("excel")}
                 className="flex items-center gap-2"
                 disabled={loading}
               >
                 <Download className="h-4 w-4" />
                 Excel
               </Button>
-              <Button 
-                onClick={() => handleExport('pdf')}
+              <Button
+                onClick={() => handleExport("pdf")}
                 className="bg-purple-600 hover:bg-purple-700 flex items-center gap-2"
                 disabled={loading}
               >
@@ -190,10 +261,12 @@ export default function TaxReport() {
           <div className="bg-red-50 border border-red-200 rounded-xl p-6 mb-6">
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-500" />
-              <p className="text-red-700 font-medium">Error loading tax report</p>
+              <p className="text-red-700 font-medium">
+                Error loading tax report
+              </p>
             </div>
             <p className="text-red-600 mt-1">{error}</p>
-            <Button 
+            <Button
               onClick={fetchTaxData}
               className="mt-3 bg-red-600 hover:bg-red-700"
               size="sm"
@@ -229,8 +302,12 @@ export default function TaxReport() {
                   </Badge>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Total Tax Collected</p>
-                  <p className="text-2xl font-bold">{formatCurrency(summary.totalTaxCollected)}</p>
+                  <p className="text-sm text-gray-600 mb-1">
+                    Total Tax Collected
+                  </p>
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(summary.totalTaxCollected)}
+                  </p>
                 </div>
               </div>
 
@@ -246,7 +323,9 @@ export default function TaxReport() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Taxable Amount</p>
-                  <p className="text-2xl font-bold">{formatCurrency(summary.totalTaxableAmount)}</p>
+                  <p className="text-2xl font-bold">
+                    {formatCurrency(summary.totalTaxableAmount)}
+                  </p>
                 </div>
               </div>
 
@@ -261,7 +340,9 @@ export default function TaxReport() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Compliance Score</p>
-                  <p className="text-2xl font-bold">{summary.complianceScore}%</p>
+                  <p className="text-2xl font-bold">
+                    {summary.complianceScore}%
+                  </p>
                 </div>
               </div>
 
@@ -301,7 +382,7 @@ export default function TaxReport() {
                   </select>
                 </div>
 
-                {selectedPeriod === 'custom' && (
+                {selectedPeriod === "custom" && (
                   <div className="flex items-center gap-2">
                     <Input type="date" className="w-auto" />
                     <span className="text-gray-500">to</span>
@@ -316,7 +397,9 @@ export default function TaxReport() {
               {/* Monthly Tax Collection */}
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">Monthly Tax Collection</h3>
+                  <h3 className="text-lg font-semibold">
+                    Monthly Tax Collection
+                  </h3>
                   <TrendingUp className="h-5 w-5 text-gray-400" />
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
@@ -324,10 +407,27 @@ export default function TaxReport() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="period" />
                     <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Bar dataKey="cgst" stackId="a" fill="#3B82F6" name="CGST" />
-                    <Bar dataKey="sgst" stackId="a" fill="#10B981" name="SGST" />
-                    <Bar dataKey="igst" stackId="a" fill="#F59E0B" name="IGST" />
+                    <Tooltip
+                      formatter={(value) => formatCurrency(Number(value))}
+                    />
+                    <Bar
+                      dataKey="cgst"
+                      stackId="a"
+                      fill="#3B82F6"
+                      name="CGST"
+                    />
+                    <Bar
+                      dataKey="sgst"
+                      stackId="a"
+                      fill="#10B981"
+                      name="SGST"
+                    />
+                    <Bar
+                      dataKey="igst"
+                      stackId="a"
+                      fill="#F59E0B"
+                      name="IGST"
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -335,7 +435,9 @@ export default function TaxReport() {
               {/* GST Rate Distribution */}
               <div className="bg-white rounded-xl shadow-sm p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold">GST Rate Distribution</h3>
+                  <h3 className="text-lg font-semibold">
+                    GST Rate Distribution
+                  </h3>
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
@@ -344,7 +446,9 @@ export default function TaxReport() {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={(entry: any) => `${entry.rate}: ${formatCurrency(entry.totalTax)}`}
+                      label={(entry: any) =>
+                        `${entry.rate}: ${formatCurrency(entry.totalTax)}`
+                      }
                       outerRadius={100}
                       fill="#8884d8"
                       dataKey="totalTax"
@@ -353,7 +457,9 @@ export default function TaxReport() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => formatCurrency(Number(value))} />
+                    <Tooltip
+                      formatter={(value) => formatCurrency(Number(value))}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -382,19 +488,31 @@ export default function TaxReport() {
                       <tr key={index} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <div 
-                              className="w-3 h-3 rounded" 
+                            <div
+                              className="w-3 h-3 rounded"
                               style={{ backgroundColor: rate.color }}
                             />
                             <span className="font-medium">{rate.rate}</span>
                           </div>
                         </td>
-                        <td className="text-right py-3 px-4">{formatCurrency(rate.taxableAmount)}</td>
-                        <td className="text-right py-3 px-4">{formatCurrency(rate.cgst)}</td>
-                        <td className="text-right py-3 px-4">{formatCurrency(rate.sgst)}</td>
-                        <td className="text-right py-3 px-4">{formatCurrency(rate.igst)}</td>
-                        <td className="text-right py-3 px-4 font-semibold">{formatCurrency(rate.totalTax)}</td>
-                        <td className="text-right py-3 px-4">{rate.transactions}</td>
+                        <td className="text-right py-3 px-4">
+                          {formatCurrency(rate.taxableAmount)}
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          {formatCurrency(rate.cgst)}
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          {formatCurrency(rate.sgst)}
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          {formatCurrency(rate.igst)}
+                        </td>
+                        <td className="text-right py-3 px-4 font-semibold">
+                          {formatCurrency(rate.totalTax)}
+                        </td>
+                        <td className="text-right py-3 px-4">
+                          {rate.transactions}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -421,7 +539,9 @@ export default function TaxReport() {
                   <tbody>
                     {taxReturns.map((return_, index) => (
                       <tr key={index} className="border-b hover:bg-gray-50">
-                        <td className="py-3 px-4 font-medium">{return_.month}</td>
+                        <td className="py-3 px-4 font-medium">
+                          {return_.month}
+                        </td>
                         <td className="text-center py-3 px-4">
                           {return_.gstr1Filed ? (
                             <CheckCircle className="h-5 w-5 text-green-500 mx-auto" />
@@ -436,9 +556,13 @@ export default function TaxReport() {
                             <AlertCircle className="h-5 w-5 text-yellow-500 mx-auto" />
                           )}
                         </td>
-                        <td className="text-center py-3 px-4">{return_.dueDate}</td>
                         <td className="text-center py-3 px-4">
-                          <Badge className={getStatusBadge(return_.status).color}>
+                          {return_.dueDate}
+                        </td>
+                        <td className="text-center py-3 px-4">
+                          <Badge
+                            className={getStatusBadge(return_.status).color}
+                          >
                             {getStatusBadge(return_.status).label}
                           </Badge>
                         </td>
@@ -450,7 +574,6 @@ export default function TaxReport() {
             </div>
           </>
         )}
-
       </div>
     </InventoryLayout>
   );
