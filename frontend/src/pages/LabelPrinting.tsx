@@ -11,6 +11,8 @@ import {
   Grid3X3,
   Loader2,
   AlertCircle,
+  Sparkles,
+  Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -828,24 +830,23 @@ export default function LabelPrinting() {
                   </Button>
                 </div>
               </div>
-
+              
               <div className="space-y-4">
                 <div className="text-center">
                   <p className="text-sm text-gray-600 mb-2">
                     {currentTemplate?.name} ({currentTemplate?.size})
                   </p>
-
-                  {previewMode === "product" ? (
+                  
+                  {previewMode === 'product' ? (
                     selectedProducts.length > 0 ? (
                       <div className="space-y-4">
                         {selectedProducts.slice(0, 3).map((product) => (
                           <div key={product._id} className="space-y-2">
-                            {Array.from(
-                              { length: Math.min(labelQuantity, 3) },
-                              (_, i) => (
-                                <div key={i}>{renderLabelPreview(product)}</div>
-                              )
-                            )}
+                            {Array.from({ length: Math.min(labelQuantity, 3) }, (_, i) => (
+                              <div key={i}>
+                                {renderLabelPreview(product)}
+                              </div>
+                            ))}
                           </div>
                         ))}
                         
@@ -873,14 +874,11 @@ export default function LabelPrinting() {
                     )
                   ) : (
                     <div className="space-y-2">
-                      {Array.from(
-                        { length: Math.min(labelQuantity, 5) },
-                        (_, i) => (
-                          <div key={i}>
-                            {renderLabelPreview(undefined, customText)}
-                          </div>
-                        )
-                      )}
+                      {Array.from({ length: Math.min(labelQuantity, 5) }, (_, i) => (
+                        <div key={i}>
+                          {renderLabelPreview(undefined, customText)}
+                        </div>
+                      ))}
                       {labelQuantity > 5 && (
                         <div className="text-xs text-gray-500 mt-2">
                           ... {labelQuantity - 5} more labels
@@ -904,11 +902,10 @@ export default function LabelPrinting() {
                     <div className="flex justify-between">
                       <span>Items:</span>
                       <span>
-                        {previewMode === "product"
+                        {previewMode === 'product' 
                           ? `${selectedProducts.length} products`
-                          : customText
-                          ? "1 custom label"
-                          : "0 items"}
+                          : customText ? '1 custom label' : '0 items'
+                        }
                       </span>
                     </div>
                     <div className="flex justify-between">
@@ -920,7 +917,7 @@ export default function LabelPrinting() {
                     <div className="flex justify-between font-medium">
                       <span>Total labels:</span>
                       <span>
-                        {previewMode === "product"
+                        {previewMode === 'product'
                           ? selectedProducts.length * labelQuantity
                           : customText
                           ? labelQuantity
