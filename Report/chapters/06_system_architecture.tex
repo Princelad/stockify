@@ -1,0 +1,95 @@
+\chapter{SYSTEM ARCHITECTURE}
+
+\section{OVERVIEW}
+
+Stockify employs a modern three-tier architecture designed for scalability, security, and maintainability. The system follows clear separation of concerns with distinct presentation, application, and data layers.
+
+\section{ARCHITECTURAL DESIGN}
+
+\subsection{Three-Tier Architecture}
+\begin{itemize}
+    \item \textbf{Presentation Layer:} React-based frontend with responsive UI
+    \item \textbf{Application Layer:} Node.js/Express.js REST API server  
+    \item \textbf{Data Layer:} MongoDB Atlas database with document storage
+\end{itemize}
+
+\subsection{Design Principles}
+\begin{itemize}
+    \item \textbf{Separation of Concerns:} Clear boundaries between layers
+    \item \textbf{Multi-Tenancy:} Secure data isolation for different users
+    \item \textbf{RESTful Design:} Stateless, resource-oriented API
+    \item \textbf{Scalability:} Horizontal and vertical scaling capabilities
+\end{itemize}
+
+\section{FRONTEND ARCHITECTURE}
+
+\subsection{Component Hierarchy}
+The React frontend follows a hierarchical structure with Pages (route components), Layouts (shared navigation), Components (reusable UI elements), and Hooks (custom state management).
+
+\subsection{State Management}
+State management utilizes React Context for global authentication state, local component state for UI interactions, custom hooks for data fetching, and URL-based state for navigation.
+
+\subsection{Data Flow}
+User interactions trigger component events, which call API services, make HTTP requests to the backend, update component state, and re-render the UI with new data.
+
+\section{BACKEND ARCHITECTURE}
+
+\subsection{MVC Pattern}
+The backend implements Model-View-Controller architecture with Mongoose models for data structure, controllers for business logic, routes for API endpoints, and services for shared functionality.
+
+\subsection{Middleware Stack}
+Express.js middleware handles authentication (JWT verification), validation (Joi schemas), error handling, logging, and security (CORS, rate limiting).
+
+\subsection{API Design}
+RESTful API follows resource-based URLs (/api/products, /api/sales), proper HTTP methods and status codes, consistent JSON format, and built-in pagination for large datasets.
+
+\section{DATABASE ARCHITECTURE}
+
+\subsection{Document-Oriented Design}
+MongoDB provides flexible schema design, embedded documents for performance, rich query capabilities with aggregation pipelines, and horizontal scaling with built-in sharding.
+
+\subsection{Multi-Tenant Isolation}
+Data isolation uses user scoping with createdBy fields, automatic filtering middleware, complete privacy between users, and efficient indexing on tenant identifiers.
+
+\subsection{Key Collections}
+Main collections include Users (profiles and authentication), Products (catalog with pricing), Sales (transactions with line items), Categories (organization), Customers (information), and Suppliers (vendor management).
+
+\section{SECURITY ARCHITECTURE}
+
+\subsection{Authentication}
+Multi-provider authentication supports JWT tokens for stateless authentication, Google OAuth integration, bcrypt password hashing, and automatic token refresh.
+
+\subsection{Authorization}
+Access control implements role-based permissions, resource ownership validation, API endpoint protection, and comprehensive input validation.
+
+\section{PERFORMANCE OPTIMIZATION}
+
+\subsection{Frontend Performance}
+Optimization includes code splitting and lazy loading, bundle optimization with tree shaking, browser caching for static assets, and debounced search functionality.
+
+\subsection{Backend Performance}
+Server optimization uses strategic database indexing, connection pooling, response caching for frequent queries, and efficient pagination for large datasets.
+
+\section{DEPLOYMENT ARCHITECTURE}
+
+\subsection{Development Environment}
+Local development uses Vite development server (port 5173), Node.js with nodemon (port 5000), MongoDB Atlas connection, and hot reload for efficiency.
+
+\subsection{Production Environment}
+Production deployment includes static build served by web server, Node.js production server with PM2, MongoDB Atlas with automated backups, and HTTPS encryption.
+
+\section{MONITORING AND INTEGRATION}
+
+\subsection{System Monitoring}
+Monitoring strategy includes centralized error logging, performance metrics tracking, user analytics, and automated health checks.
+
+\subsection{External Integrations}
+Third-party services include Google OAuth authentication, email notification systems, file storage solutions, and analytics tools.
+
+\section{SCALABILITY CONSIDERATIONS}
+
+The architecture supports future growth through stateless API design for server replication, MongoDB Atlas automatic scaling, CDN integration for static assets, and load balancing capabilities.
+
+\section{CONCLUSION}
+
+The Stockify architecture provides a solid foundation for scalable, secure, and maintainable inventory management. The modular design enables future enhancements while maintaining system stability and performance.
