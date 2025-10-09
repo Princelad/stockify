@@ -7,6 +7,7 @@ import {
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ProtectedRoute } from "@/components/common/ProtectedRoute";
+import { ThemeLoadingScreen } from "@/components/ui/theme-loading-screen";
 import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -32,8 +33,9 @@ function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="stockify-theme">
       <AuthProvider>
+        <ThemeLoadingScreen />
         <Router>
-          <div className="min-h-screen bg-background text-foreground">
+          <div className="min-h-screen bg-background text-foreground transition-colors duration-300">
             <Routes>
               {/* Public routes */}
               <Route path="/auth/callback" element={<AuthCallback />} />

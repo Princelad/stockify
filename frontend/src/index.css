@@ -114,8 +114,40 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
+  html {
+    color-scheme: light;
+    transition: color-scheme 0.3s ease;
+  }
+  
+  html.dark {
+    color-scheme: dark;
+  }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
+  }
+
+  /* Smooth theme transitions */
+  *,
+  *::before,
+  *::after {
+    transition: 
+      background-color 0.3s ease,
+      border-color 0.3s ease,
+      color 0.3s ease,
+      fill 0.3s ease,
+      stroke 0.3s ease,
+      box-shadow 0.3s ease;
+  }
+
+  /* Reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+    }
   }
 }
 

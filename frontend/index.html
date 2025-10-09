@@ -1,10 +1,48 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml"/>
+    <link rel="icon" type="image/svg+xml" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Theme Meta Tags -->
+    <meta
+      name="theme-color"
+      content="#ffffff"
+      media="(prefers-color-scheme: light)"
+    />
+    <meta
+      name="theme-color"
+      content="#1f2937"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="msapplication-navbutton-color" content="#ffffff" />
+
+    <!-- Color Scheme -->
+    <meta name="color-scheme" content="light dark" />
+
     <title>Stockify</title>
+
+    <!-- Prevent Flash of Unstyled Content -->
+    <script>
+      // Set initial theme before page loads to prevent flash
+      (function () {
+        const theme = localStorage.getItem("stockify-theme") || "system";
+        const isDark =
+          theme === "dark" ||
+          (theme === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+        if (isDark) {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        } else {
+          document.documentElement.classList.add("light");
+          document.documentElement.style.colorScheme = "light";
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
