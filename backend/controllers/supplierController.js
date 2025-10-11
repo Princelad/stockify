@@ -140,7 +140,10 @@ const getSupplier = async (req, res) => {
     const { id } = req.params;
 
     // Find supplier and populate with product statistics
-    const supplier = await Supplier.findById(id);
+    const supplier = await Supplier.findOne({
+      _id: id,
+      createdBy: req.user._id,
+    });
 
     if (
       !supplier ||
@@ -305,10 +308,11 @@ const updateSupplier = async (req, res) => {
     }
 
     // Update supplier
-    const updatedSupplier = await Supplier.findByIdAndUpdate(id, updateData, {
-      new: true,
-      runValidators: true,
-    });
+    const updatedSupplier = await Supplier.findOneAndUpdate(
+      { _id: id, createdBy: req.user._id },
+      updateData,
+      { new: true, runValidators: true }
+    );
 
     // Update product statistics
     await updatedSupplier.updateProductStats();
@@ -347,7 +351,10 @@ const deleteSupplier = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const supplier = await Supplier.findById(id);
+    const supplier = await Supplier.findOne({
+      _id: id,
+      createdBy: req.user._id,
+    });
 
     if (
       !supplier ||
