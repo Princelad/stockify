@@ -110,7 +110,8 @@ const getDashboardStats = async (req, res) => {
       .sort({ updatedAt: -1 })
       .limit(10)
       .select("name sku currentStock updatedAt category supplier.name")
-      .populate("createdBy", "name");
+      .populate("createdBy", "name")
+      .lean();
 
     // Top selling products (by totalSold)
     const topSellingProducts = await Product.find({
@@ -119,13 +120,16 @@ const getDashboardStats = async (req, res) => {
     })
       .sort({ totalSold: -1 })
       .limit(5)
-      .select("name sku totalSold sellingPrice category lastSoldDate");
+      .select("name sku totalSold sellingPrice category lastSoldDate")
+      .lean();
 
     // Critical alerts
     const criticalAlerts = await Product.find({
       ...userFilter,
       currentStock: 0,
-    }).select("name sku category supplier.name");
+    })
+      .select("name sku category supplier.name")
+      .lean();
 
     res.json({
       success: true,
@@ -346,14 +350,15 @@ const bulkImportProducts = async (req, res) => {
         // Check for existing SKU
         const existingProduct = await Product.findOne({
           sku: productData.sku,
-        });
+          createdBy: req.user._id,
+        }).lean();
 
         if (existingProduct) {
           if (importOptions.updateExisting) {
             // Update existing product
             const updated = await Product.findByIdAndUpdate(
               existingProduct._id,
-              enrichedProduct,
+              { ...enrichedProduct, createdBy: req.user._id },
               { new: true, runValidators: true }
             );
             results.updated.push(updated);
@@ -666,7 +671,9 @@ const getProduct = async (req, res) => {
     const product = await Product.findOne({
       _id: req.params.id,
       createdBy: req.user._id, // Ensure user can only access their own products
-    }).populate("createdBy", "name email");
+    })
+      .populate("createdBy", "name email")
+      .lean();
 
     if (!product) {
       return res.status(404).json({
@@ -675,11 +682,9 @@ const getProduct = async (req, res) => {
       });
     }
 
-    const productData = product.toObject({ virtuals: true });
-
     res.json({
       success: true,
-      data: productData,
+      data: product,
     });
   } catch (error) {
     console.error("Get product error:", error);
@@ -736,7 +741,7 @@ const createProduct = async (req, res) => {
     const savedProduct = await product.save();
     await savedProduct.populate("createdBy", "name email");
 
-    // If product has a category, ensure it exists in Category collection
+    // If product has a category, ensure it exists in Category collection (per-tenant)
     if (savedProduct.category) {
       try {
         // Check if category already exists
@@ -745,7 +750,8 @@ const createProduct = async (req, res) => {
             $regex: new RegExp(`^${savedProduct.category.trim()}$`, "i"),
           },
           isActive: true,
-        });
+          createdBy: req.user._id,
+        }).lean();
 
         if (!existingCategory) {
           // Create category from product if it doesn't exist
@@ -754,6 +760,7 @@ const createProduct = async (req, res) => {
             type: "from_products",
             isDefault: false,
             isPopular: false,
+            createdBy: req.user._id,
           });
           await newCategory.save();
         }
@@ -823,7 +830,8 @@ const updateProduct = async (req, res) => {
         const existingCategory = await Category.findOne({
           name: { $regex: new RegExp(`^${product.category.trim()}$`, "i") },
           isActive: true,
-        });
+          createdBy: req.user._id,
+        }).lean();
 
         if (!existingCategory) {
           // Create category from product if it doesn't exist
@@ -832,6 +840,7 @@ const updateProduct = async (req, res) => {
             type: "from_products",
             isDefault: false,
             isPopular: false,
+            createdBy: req.user._id,
           });
           await newCategory.save();
         }
