@@ -160,6 +160,8 @@ const getDashboardStats = async (req, res) => {
  * Purpose: Product listing with multi-supplier support and comprehensive filters
  * Features: Search, supplier filter, price range, stock status, sorting
  */
+const { ok, fail } = require("../utils/responder");
+
 const getProducts = async (req, res) => {
   try {
     const {
@@ -238,27 +240,20 @@ const getProducts = async (req, res) => {
 
     const total = await Product.countDocuments(filter);
 
-    res.json({
-      success: true,
-      data: {
-        products,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / limit),
-          totalItems: total,
-          itemsPerPage: parseInt(limit),
-          hasNextPage: page < Math.ceil(total / limit),
-          hasPrevPage: page > 1,
-        },
+    return ok(res, {
+      products,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: page < Math.ceil(total / limit),
+        hasPrevPage: page > 1,
       },
     });
   } catch (error) {
     console.error("Get products error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching products",
-      error: error.message,
-    });
+    return fail(res, error, "Error fetching products");
   }
 };
 
