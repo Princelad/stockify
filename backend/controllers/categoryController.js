@@ -1,5 +1,6 @@
 const Category = require("../models/Category");
 const Product = require("../models/Product");
+const { ok, fail } = require("../utils/responder");
 
 /**
  * GET ALL CATEGORIES
@@ -8,10 +9,7 @@ const Product = require("../models/Product");
 const getCategories = async (req, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return fail(res, null, "Authentication required", 401);
     }
 
     // Get user-created categories
@@ -107,27 +105,18 @@ const getCategories = async (req, res) => {
       return a.name.localeCompare(b.name);
     });
 
-    res.json({
-      success: true,
-      data: {
-        categories: categoriesArray,
-        popular: categoriesArray.filter((cat) => cat.isPopular),
-        userCreated: categoriesArray.filter(
-          (cat) => cat.type === "user_created"
-        ),
-        fromProducts: categoriesArray.filter(
-          (cat) => cat.type === "from_products"
-        ),
-        total: categoriesArray.length,
-      },
+    return ok(res, {
+      categories: categoriesArray,
+      popular: categoriesArray.filter((cat) => cat.isPopular),
+      userCreated: categoriesArray.filter((cat) => cat.type === "user_created"),
+      fromProducts: categoriesArray.filter(
+        (cat) => cat.type === "from_products"
+      ),
+      total: categoriesArray.length,
     });
   } catch (error) {
     console.error("Get categories error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching categories",
-      error: error.message,
-    });
+    return fail(res, error, "Error fetching categories");
   }
 };
 
@@ -140,10 +129,7 @@ const createCategory = async (req, res) => {
     const { name, description } = req.body;
 
     if (!name || !name.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: "Category name is required",
-      });
+      return fail(res, null, "Category name is required", 400);
     }
 
     // Check if category already exists (case-insensitive, per-tenant)
@@ -154,10 +140,7 @@ const createCategory = async (req, res) => {
     });
 
     if (existingCategory) {
-      return res.status(400).json({
-        success: false,
-        message: "Category already exists",
-      });
+      return fail(res, null, "Category already exists", 400);
     }
 
     const category = new Category({
@@ -170,26 +153,15 @@ const createCategory = async (req, res) => {
 
     const savedCategory = await category.save();
 
-    res.status(201).json({
-      success: true,
-      message: "Category created successfully",
-      data: savedCategory,
-    });
+    return ok(res, savedCategory, "Category created successfully", 201);
   } catch (error) {
     console.error("Create category error:", error);
 
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Category with this name already exists",
-      });
+      return fail(res, null, "Category with this name already exists", 400);
     }
 
-    res.status(500).json({
-      success: false,
-      message: "Error creating category",
-      error: error.message,
-    });
+    return fail(res, error, "Error creating category");
   }
 };
 
@@ -200,10 +172,7 @@ const createCategory = async (req, res) => {
 const getPopularCategories = async (req, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return fail(res, null, "Authentication required", 401);
     }
 
     // Get categories with product counts
@@ -239,17 +208,10 @@ const getPopularCategories = async (req, res) => {
         type: "popular",
       }));
 
-    res.json({
-      success: true,
-      data: popularCategories,
-    });
+    return ok(res, popularCategories);
   } catch (error) {
     console.error("Get popular categories error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching popular categories",
-      error: error.message,
-    });
+    return fail(res, error, "Error fetching popular categories");
   }
 };
 
@@ -269,11 +231,12 @@ const updateCategory = async (req, res) => {
     });
 
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "Category not found or you do not have permission to update it",
-      });
+      return fail(
+        res,
+        null,
+        "Category not found or you do not have permission to update it",
+        404
+      );
     }
 
     if (name && name.trim()) {
@@ -286,10 +249,7 @@ const updateCategory = async (req, res) => {
       });
 
       if (existingCategory) {
-        return res.status(400).json({
-          success: false,
-          message: "Category with this name already exists",
-        });
+        return fail(res, null, "Category with this name already exists", 400);
       }
 
       category.name = name.trim();
@@ -301,18 +261,10 @@ const updateCategory = async (req, res) => {
 
     const updatedCategory = await category.save();
 
-    res.json({
-      success: true,
-      message: "Category updated successfully",
-      data: updatedCategory,
-    });
+    return ok(res, updatedCategory, "Category updated successfully");
   } catch (error) {
     console.error("Update category error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error updating category",
-      error: error.message,
-    });
+    return fail(res, error, "Error updating category");
   }
 };
 
@@ -331,11 +283,12 @@ const deleteCategory = async (req, res) => {
     });
 
     if (!category) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "Category not found or you do not have permission to delete it",
-      });
+      return fail(
+        res,
+        null,
+        "Category not found or you do not have permission to delete it",
+        404
+      );
     }
 
     // Check if category is being used by products
@@ -346,26 +299,21 @@ const deleteCategory = async (req, res) => {
     });
 
     if (productsUsingCategory > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot delete category. It is being used by ${productsUsingCategory} product(s).`,
-      });
+      return fail(
+        res,
+        null,
+        `Cannot delete category. It is being used by ${productsUsingCategory} product(s).`,
+        400
+      );
     }
 
     category.isActive = false;
     await category.save();
 
-    res.json({
-      success: true,
-      message: "Category deleted successfully",
-    });
+    return ok(res, null, "Category deleted successfully");
   } catch (error) {
     console.error("Delete category error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error deleting category",
-      error: error.message,
-    });
+    return fail(res, error, "Error deleting category");
   }
 };
 
