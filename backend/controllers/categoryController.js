@@ -146,10 +146,11 @@ const createCategory = async (req, res) => {
       });
     }
 
-    // Check if category already exists (case-insensitive)
+    // Check if category already exists (case-insensitive, per-tenant)
     const existingCategory = await Category.findOne({
       name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
       isActive: true,
+      createdBy: req.user._id,
     });
 
     if (existingCategory) {
@@ -281,6 +282,7 @@ const updateCategory = async (req, res) => {
         name: { $regex: new RegExp(`^${name.trim()}$`, "i") },
         _id: { $ne: id },
         isActive: true,
+        createdBy: req.user._id,
       });
 
       if (existingCategory) {
