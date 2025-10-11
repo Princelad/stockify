@@ -325,10 +325,7 @@ const bulkImportProducts = async (req, res) => {
     const { products, supplierInfo, importOptions = {} } = req.body;
 
     if (!Array.isArray(products) || products.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Products array is required",
-      });
+      return fail(res, null, "Products array is required", 400);
     }
 
     const results = {
@@ -383,10 +380,9 @@ const bulkImportProducts = async (req, res) => {
       }
     }
 
-    res.json({
-      success: true,
-      message: "Bulk import completed",
-      data: {
+    return ok(
+      res,
+      {
         summary: {
           total: products.length,
           successful: results.successful.length,
@@ -396,14 +392,11 @@ const bulkImportProducts = async (req, res) => {
         },
         results,
       },
-    });
+      "Bulk import completed"
+    );
   } catch (error) {
     console.error("Bulk import error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error during bulk import",
-      error: error.message,
-    });
+    return fail(res, error, "Error during bulk import");
   }
 };
 
@@ -429,10 +422,12 @@ const trackStockMovement = async (req, res) => {
       createdBy: req.user._id, // Ensure user can only track their own products
     });
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found or you do not have permission to access it",
-      });
+      return fail(
+        res,
+        null,
+        "Product not found or you do not have permission to access it",
+        404
+      );
     }
 
     const oldStock = product.currentStock;
@@ -469,12 +464,9 @@ const trackStockMovement = async (req, res) => {
       timestamp: new Date(),
     };
 
-    res.json({
-      success: true,
-      message: `Stock ${
-        movementType === "in" ? "received" : "issued"
-      } successfully`,
-      data: {
+    return ok(
+      res,
+      {
         product: {
           id: product._id,
           name: product.name,
@@ -484,14 +476,11 @@ const trackStockMovement = async (req, res) => {
         },
         movement: movementRecord,
       },
-    });
+      `Stock ${movementType === "in" ? "received" : "issued"} successfully`
+    );
   } catch (error) {
     console.error("Stock movement error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error tracking stock movement",
-      error: error.message,
-    });
+    return fail(res, error, "Error tracking stock movement");
   }
 };
 
@@ -510,10 +499,12 @@ const getProductPricing = async (req, res) => {
       createdBy: req.user._id, // Ensure user can only access their own products
     });
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found or you do not have permission to access it",
-      });
+      return fail(
+        res,
+        null,
+        "Product not found or you do not have permission to access it",
+        404
+      );
     }
 
     let applicablePrice;
@@ -534,40 +525,33 @@ const getProductPricing = async (req, res) => {
     const profit = totalPrice - totalCost;
     const profitMargin = ((profit / totalCost) * 100).toFixed(2);
 
-    res.json({
-      success: true,
-      data: {
-        product: {
-          id: product._id,
-          name: product.name,
-          sku: product.sku,
-          currentStock: product.currentStock,
-        },
-        pricing: {
-          costPrice: product.costPrice,
-          retailPrice: product.sellingPrice,
-          wholesalePrice: product.wholesalePrice,
-          applicablePrice,
-          priceType,
-          quantity,
-          totalPrice,
-          profit,
-          profitMargin: `${profitMargin}%`,
-        },
-        availability: {
-          inStock: product.currentStock >= quantity,
-          availableQuantity: product.currentStock,
-          isLowStock: product.currentStock <= product.minStockLevel,
-        },
+    return ok(res, {
+      product: {
+        id: product._id,
+        name: product.name,
+        sku: product.sku,
+        currentStock: product.currentStock,
+      },
+      pricing: {
+        costPrice: product.costPrice,
+        retailPrice: product.sellingPrice,
+        wholesalePrice: product.wholesalePrice,
+        applicablePrice,
+        priceType,
+        quantity,
+        totalPrice,
+        profit,
+        profitMargin: `${profitMargin}%`,
+      },
+      availability: {
+        inStock: product.currentStock >= quantity,
+        availableQuantity: product.currentStock,
+        isLowStock: product.currentStock <= product.minStockLevel,
       },
     });
   } catch (error) {
     console.error("Get product pricing error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error fetching product pricing",
-      error: error.message,
-    });
+    return fail(res, error, "Error fetching product pricing");
   }
 };
 
@@ -1419,10 +1403,7 @@ const searchProductsForBilling = async (req, res) => {
     const { q: search, limit = 20 } = req.query;
 
     if (!search || search.trim().length < 2) {
-      return res.json({
-        success: true,
-        data: { products: [] },
-      });
+      return ok(res, { products: [] });
     }
 
     // Search products with multi-field matching
@@ -1446,21 +1427,17 @@ const searchProductsForBilling = async (req, res) => {
       .sort({ name: 1 })
       .limit(parseInt(limit));
 
-    res.json({
-      success: true,
-      data: {
+    return ok(
+      res,
+      {
         products,
         total: products.length,
       },
-      message: `Found ${products.length} products`,
-    });
+      `Found ${products.length} products`
+    );
   } catch (error) {
     console.error("Search products for billing error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error searching products",
-      error: error.message,
-    });
+    return fail(res, error, "Error searching products");
   }
 };
 
