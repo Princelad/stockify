@@ -7,7 +7,7 @@ const getCustomers = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = "" } = req.query;
 
-    const filters = {};
+    const filters = { createdBy: req.user._id };
     if (search) {
       filters.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -50,9 +50,10 @@ const getCustomers = async (req, res) => {
  */
 const getCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id).populate(
-      "purchaseHistory.saleId"
-    );
+    const customer = await Customer.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    }).populate("purchaseHistory.saleId");
 
     if (!customer) {
       return res.status(404).json({
@@ -90,9 +91,12 @@ const createCustomer = async (req, res) => {
       });
     }
 
-    // Check if customer with same phone already exists
+    // Check if customer with same phone already exists for this user
     if (phone) {
-      const existingCustomer = await Customer.findOne({ phone });
+      const existingCustomer = await Customer.findOne({
+        phone,
+        createdBy: req.user._id,
+      });
       if (existingCustomer) {
         return res.status(409).json({
           success: false,
@@ -107,6 +111,7 @@ const createCustomer = async (req, res) => {
       phone,
       address,
       isDealer,
+      createdBy: req.user._id,
     });
 
     await customer.save();
@@ -142,7 +147,10 @@ const updateCustomer = async (req, res) => {
   try {
     const { name, email, phone, address, isDealer } = req.body;
 
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
     if (!customer) {
       return res.status(404).json({
         success: false,
@@ -152,7 +160,10 @@ const updateCustomer = async (req, res) => {
 
     // Check if phone is being changed and if new phone already exists
     if (phone && phone !== customer.phone) {
-      const existingCustomer = await Customer.findOne({ phone });
+      const existingCustomer = await Customer.findOne({
+        phone,
+        createdBy: req.user._id,
+      });
       if (existingCustomer) {
         return res.status(409).json({
           success: false,
@@ -198,7 +209,10 @@ const updateCustomer = async (req, res) => {
  */
 const deleteCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
 
     if (!customer) {
       return res.status(404).json({
@@ -215,7 +229,7 @@ const deleteCustomer = async (req, res) => {
       });
     }
 
-    await Customer.findByIdAndDelete(req.params.id);
+    await Customer.deleteOne({ _id: req.params.id, createdBy: req.user._id });
 
     res.json({
       success: true,
@@ -246,6 +260,7 @@ const searchCustomers = async (req, res) => {
     }
 
     const customers = await Customer.find({
+      createdBy: req.user._id,
       $or: [
         { name: { $regex: q, $options: "i" } },
         { phone: { $regex: q, $options: "i" } },

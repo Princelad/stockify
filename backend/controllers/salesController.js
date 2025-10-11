@@ -111,7 +111,10 @@ const createSale = async (req, res) => {
     let customer = null;
     if (customerId) {
       // TODO: Enforce tenant scoping on customers once `createdBy` is added to Customer schema
-      customer = await Customer.findById(customerId).session(session);
+      customer = await Customer.findOne({
+        _id: customerId,
+        createdBy: req.user._id,
+      }).session(session);
       if (!customer) {
         return res.status(404).json({
           success: false,
@@ -262,7 +265,10 @@ const updateSalePayment = async (req, res) => {
 
     // Update customer due amount if customer exists and payment status changed
     if (sale.customer) {
-      const customer = await Customer.findById(sale.customer).session(session);
+      const customer = await Customer.findOne({
+        _id: sale.customer,
+        createdBy: req.user._id,
+      }).session(session);
       if (customer) {
         // If changing from pending/partial to paid, reduce due amount
         if (
@@ -337,7 +343,10 @@ const deleteSale = async (req, res) => {
 
     // Update customer if exists
     if (sale.customer) {
-      const customer = await Customer.findById(sale.customer).session(session);
+      const customer = await Customer.findOne({
+        _id: sale.customer,
+        createdBy: req.user._id,
+      }).session(session);
       if (customer) {
         // Remove from purchase history
         customer.purchaseHistory = customer.purchaseHistory.filter(
