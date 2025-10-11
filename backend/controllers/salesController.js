@@ -2,6 +2,7 @@ const Sale = require("../models/Sale");
 const Product = require("../models/Product");
 const Customer = require("../models/Customer");
 const mongoose = require("mongoose");
+const { ok, fail } = require("../utils/responder");
 
 /**
  * Get all sales with pagination and filters
@@ -18,7 +19,7 @@ const getSales = async (req, res) => {
       endDate,
     } = req.query;
 
-    const filters = {};
+    const filters = { createdBy: req.user._id };
 
     if (customer) filters.customer = customer;
     if (paymentMethod) filters.paymentMethod = paymentMethod;
@@ -35,29 +36,23 @@ const getSales = async (req, res) => {
       .populate("items.product", "name sku")
       .sort({ createdAt: -1 })
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean();
 
     const total = await Sale.countDocuments(filters);
 
-    res.json({
-      success: true,
-      data: {
-        sales,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / limit),
-          totalItems: total,
-          itemsPerPage: parseInt(limit),
-        },
+    return ok(res, {
+      sales,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit),
       },
     });
   } catch (error) {
     console.error("Error fetching sales:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch sales",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch sales");
   }
 };
 
@@ -66,9 +61,13 @@ const getSales = async (req, res) => {
  */
 const getSale = async (req, res) => {
   try {
-    const sale = await Sale.findById(req.params.id)
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    })
       .populate("customer")
-      .populate("items.product");
+      .populate("items.product")
+      .lean();
 
     if (!sale) {
       return res.status(404).json({
@@ -77,17 +76,10 @@ const getSale = async (req, res) => {
       });
     }
 
-    res.json({
-      success: true,
-      data: sale,
-    });
+    return ok(res, sale);
   } catch (error) {
     console.error("Error fetching sale:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch sale",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch sale");
   }
 };
 
@@ -118,6 +110,7 @@ const createSale = async (req, res) => {
     // Validate customer if provided
     let customer = null;
     if (customerId) {
+      // TODO: Enforce tenant scoping on customers once `createdBy` is added to Customer schema
       customer = await Customer.findById(customerId).session(session);
       if (!customer) {
         return res.status(404).json({
@@ -132,7 +125,10 @@ const createSale = async (req, res) => {
     const stockUpdates = [];
 
     for (const item of items) {
-      const product = await Product.findById(item.productId).session(session);
+      const product = await Product.findOne({
+        _id: item.productId,
+        createdBy: req.user._id,
+      }).session(session);
       if (!product) {
         await session.abortTransaction();
         return res.status(404).json({
@@ -168,7 +164,7 @@ const createSale = async (req, res) => {
       // Prepare stock update
       stockUpdates.push({
         updateOne: {
-          filter: { _id: product._id },
+          filter: { _id: product._id, createdBy: req.user._id },
           update: {
             $inc: {
               currentStock: -item.quantity,
@@ -186,6 +182,7 @@ const createSale = async (req, res) => {
       discountPercentage,
       paymentMethod,
       paymentStatus,
+      createdBy: req.user._id,
     };
 
     // Only add customer if customerId is provided
@@ -232,11 +229,7 @@ const createSale = async (req, res) => {
   } catch (error) {
     await session.abortTransaction();
     console.error("Error creating sale:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create sale",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to create sale");
   } finally {
     session.endSession();
   }
@@ -251,7 +244,10 @@ const updateSalePayment = async (req, res) => {
 
   try {
     const { paymentStatus } = req.body;
-    const sale = await Sale.findById(req.params.id).session(session);
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    }).session(session);
 
     if (!sale) {
       return res.status(404).json({
@@ -289,19 +285,11 @@ const updateSalePayment = async (req, res) => {
 
     await session.commitTransaction();
 
-    res.json({
-      success: true,
-      message: "Payment status updated successfully",
-      data: sale,
-    });
+    return ok(res, sale, "Payment status updated successfully");
   } catch (error) {
     await session.abortTransaction();
     console.error("Error updating payment status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update payment status",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to update payment status");
   } finally {
     session.endSession();
   }
@@ -315,7 +303,10 @@ const deleteSale = async (req, res) => {
   session.startTransaction();
 
   try {
-    const sale = await Sale.findById(req.params.id).session(session);
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    }).session(session);
 
     if (!sale) {
       return res.status(404).json({
@@ -329,7 +320,7 @@ const deleteSale = async (req, res) => {
     for (const item of sale.items) {
       stockUpdates.push({
         updateOne: {
-          filter: { _id: item.product },
+          filter: { _id: item.product, createdBy: req.user._id },
           update: {
             $inc: {
               currentStock: item.quantity,
@@ -368,18 +359,11 @@ const deleteSale = async (req, res) => {
     await Sale.findByIdAndDelete(req.params.id, { session });
     await session.commitTransaction();
 
-    res.json({
-      success: true,
-      message: "Sale deleted successfully",
-    });
+    return ok(res, null, "Sale deleted successfully");
   } catch (error) {
     await session.abortTransaction();
     console.error("Error deleting sale:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete sale",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to delete sale");
   } finally {
     session.endSession();
   }
@@ -395,35 +379,38 @@ const getSalesStats = async (req, res) => {
     startDate.setDate(startDate.getDate() - parseInt(period));
 
     const [totalSales, totalRevenue, recentSales] = await Promise.all([
-      Sale.countDocuments({ createdAt: { $gte: startDate } }),
+      Sale.countDocuments({
+        createdBy: req.user._id,
+        createdAt: { $gte: startDate },
+      }),
       Sale.aggregate([
-        { $match: { createdAt: { $gte: startDate }, paymentStatus: "paid" } },
+        {
+          $match: {
+            createdBy: req.user._id,
+            createdAt: { $gte: startDate },
+            paymentStatus: "paid",
+          },
+        },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]),
-      Sale.find({ createdAt: { $gte: startDate } })
+      Sale.find({ createdBy: req.user._id, createdAt: { $gte: startDate } })
         .populate("customer", "name")
         .sort({ createdAt: -1 })
-        .limit(5),
+        .limit(5)
+        .lean(),
     ]);
 
     const revenue = totalRevenue.length > 0 ? totalRevenue[0].total : 0;
 
-    res.json({
-      success: true,
-      data: {
-        totalSales,
-        totalRevenue: revenue,
-        recentSales,
-        period: parseInt(period),
-      },
+    return ok(res, {
+      totalSales,
+      totalRevenue: revenue,
+      recentSales,
+      period: parseInt(period),
     });
   } catch (error) {
     console.error("Error fetching sales stats:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch sales statistics",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch sales statistics");
   }
 };
 
