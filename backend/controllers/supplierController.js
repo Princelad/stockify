@@ -1,6 +1,7 @@
 const Supplier = require("../models/Supplier");
 const Product = require("../models/Product");
 const mongoose = require("mongoose");
+const { ok, fail } = require("../utils/responder");
 
 /**
  * GET ALL SUPPLIERS
@@ -109,9 +110,8 @@ const getSuppliers = async (req, res) => {
     const hasNextPage = parseInt(page) < totalPages;
     const hasPrevPage = parseInt(page) > 1;
 
-    res.json({
-      success: true,
-      data: suppliersWithStats,
+    return ok(res, {
+      suppliers: suppliersWithStats,
       pagination: {
         currentPage: parseInt(page),
         totalPages,
@@ -120,15 +120,10 @@ const getSuppliers = async (req, res) => {
         hasNextPage,
         hasPrevPage,
       },
-      message: `Retrieved ${suppliersWithStats.length} suppliers`,
-    });
+    }, `Retrieved ${suppliersWithStats.length} suppliers`);
   } catch (error) {
     console.error("Error fetching suppliers:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch suppliers",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch suppliers");
   }
 };
 
@@ -149,10 +144,7 @@ const getSupplier = async (req, res) => {
       !supplier ||
       supplier.createdBy.toString() !== req.user._id.toString()
     ) {
-      return res.status(404).json({
-        success: false,
-        message: "Supplier not found",
-      });
+      return fail(res, null, "Supplier not found", 404);
     }
 
     // Get products for this supplier
@@ -174,18 +166,10 @@ const getSupplier = async (req, res) => {
     supplierData.totalValue = totalValue;
     supplierData.products = products;
 
-    res.json({
-      success: true,
-      data: supplierData,
-      message: "Supplier retrieved successfully",
-    });
+    return ok(res, supplierData, "Supplier retrieved successfully");
   } catch (error) {
     console.error("Error fetching supplier:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch supplier",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch supplier");
   }
 };
 
@@ -212,10 +196,7 @@ const createSupplier = async (req, res) => {
     });
 
     if (existingSupplier) {
-      return res.status(400).json({
-        success: false,
-        message: "A supplier with this name already exists",
-      });
+      return fail(res, null, "A supplier with this name already exists", 400);
     }
 
     const supplier = new Supplier(supplierData);
@@ -226,11 +207,7 @@ const createSupplier = async (req, res) => {
     supplierWithStats.productCount = 0;
     supplierWithStats.totalValue = 0;
 
-    res.status(201).json({
-      success: true,
-      data: supplierWithStats,
-      message: "Supplier created successfully",
-    });
+    return ok(res, supplierWithStats, "Supplier created successfully", 201);
   } catch (error) {
     console.error("Error creating supplier:", error);
 
@@ -238,18 +215,10 @@ const createSupplier = async (req, res) => {
       const validationErrors = Object.values(error.errors).map(
         (err) => err.message
       );
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: validationErrors,
-      });
+      return fail(res, { errors: validationErrors }, "Validation failed", 400);
     }
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to create supplier",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to create supplier");
   }
 };
 
@@ -273,10 +242,7 @@ const updateSupplier = async (req, res) => {
       !supplier ||
       supplier.createdBy.toString() !== req.user._id.toString()
     ) {
-      return res.status(404).json({
-        success: false,
-        message: "Supplier not found",
-      });
+      return fail(res, null, "Supplier not found", 404);
     }
 
     // Check for duplicate name if name is being changed
@@ -289,10 +255,7 @@ const updateSupplier = async (req, res) => {
       });
 
       if (existingSupplier) {
-        return res.status(400).json({
-          success: false,
-          message: "A supplier with this name already exists",
-        });
+        return fail(res, null, "A supplier with this name already exists", 400);
       }
 
       // If name is changing, update all products with this supplier
@@ -317,11 +280,7 @@ const updateSupplier = async (req, res) => {
     // Update product statistics
     await updatedSupplier.updateProductStats();
 
-    res.json({
-      success: true,
-      data: updatedSupplier,
-      message: "Supplier updated successfully",
-    });
+    return ok(res, updatedSupplier, "Supplier updated successfully");
   } catch (error) {
     console.error("Error updating supplier:", error);
 
@@ -329,18 +288,10 @@ const updateSupplier = async (req, res) => {
       const validationErrors = Object.values(error.errors).map(
         (err) => err.message
       );
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: validationErrors,
-      });
+      return fail(res, { errors: validationErrors }, "Validation failed", 400);
     }
 
-    res.status(500).json({
-      success: false,
-      message: "Failed to update supplier",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to update supplier");
   }
 };
 
@@ -360,10 +311,7 @@ const deleteSupplier = async (req, res) => {
       !supplier ||
       supplier.createdBy.toString() !== req.user._id.toString()
     ) {
-      return res.status(404).json({
-        success: false,
-        message: "Supplier not found",
-      });
+      return fail(res, null, "Supplier not found", 404);
     }
 
     // Check if supplier has active products
@@ -374,10 +322,7 @@ const deleteSupplier = async (req, res) => {
     });
 
     if (productCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot delete supplier. ${productCount} active products are associated with this supplier. Please reassign or remove products first.`,
-      });
+      return fail(res, null, `Cannot delete supplier. ${productCount} active products are associated with this supplier. Please reassign or remove products first.`, 400);
     }
 
     // Soft delete
@@ -385,17 +330,10 @@ const deleteSupplier = async (req, res) => {
     supplier.status = "inactive";
     await supplier.save();
 
-    res.json({
-      success: true,
-      message: "Supplier deleted successfully",
-    });
+    return ok(res, null, "Supplier deleted successfully");
   } catch (error) {
     console.error("Error deleting supplier:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete supplier",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to delete supplier");
   }
 };
 
@@ -466,18 +404,10 @@ const getSupplierStats = async (req, res) => {
       recentSuppliers,
     };
 
-    res.json({
-      success: true,
-      data: result,
-      message: "Supplier statistics retrieved successfully",
-    });
+    return ok(res, result, "Supplier statistics retrieved successfully");
   } catch (error) {
     console.error("Error fetching supplier stats:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch supplier statistics",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch supplier statistics");
   }
 };
 
@@ -489,10 +419,7 @@ const searchSuppliers = async (req, res) => {
     const { q, limit = 10 } = req.query;
 
     if (!q) {
-      return res.status(400).json({
-        success: false,
-        message: "Search query is required",
-      });
+      return fail(res, null, "Search query is required", 400);
     }
 
     const suppliers = await Supplier.find({
@@ -510,18 +437,10 @@ const searchSuppliers = async (req, res) => {
       .limit(parseInt(limit))
       .sort({ name: 1 });
 
-    res.json({
-      success: true,
-      data: suppliers,
-      message: `Found ${suppliers.length} suppliers`,
-    });
+    return ok(res, suppliers, `Found ${suppliers.length} suppliers`);
   } catch (error) {
     console.error("Error searching suppliers:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to search suppliers",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to search suppliers");
   }
 };
 
