@@ -246,6 +246,11 @@ class ApiService {
         );
       }
 
+      // Also check for application-level errors (success: false)
+      if (data.success === false) {
+        throw new Error(data.message || "Request failed");
+      }
+
       return data;
     } catch (error) {
       console.error("API request failed:", error);

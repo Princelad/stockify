@@ -706,10 +706,7 @@ const createProduct = async (req, res) => {
       });
 
       if (!supplierExists) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid supplier selected",
-        });
+        return fail(res, null, "Invalid supplier selected", 400);
       }
 
       // Also populate supplier info for backward compatibility
@@ -754,35 +751,20 @@ const createProduct = async (req, res) => {
       }
     }
 
-    res.status(201).json({
-      success: true,
-      message: "Product created successfully",
-      data: savedProduct,
-    });
+    return ok(res, savedProduct, "Product created successfully", 201);
   } catch (error) {
     console.error("Create product error:", error);
 
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Product with this SKU already exists",
-      });
+      return fail(res, null, "Product with this SKU already exists", 400);
     }
 
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors,
-      });
+      return fail(res, { errors }, "Validation failed", 400);
     }
 
-    res.status(500).json({
-      success: false,
-      message: "Error creating product",
-      error: error.message,
-    });
+    return fail(res, error, "Error creating product");
   }
 };
 
@@ -801,10 +783,12 @@ const updateProduct = async (req, res) => {
     ).populate("createdBy", "name email");
 
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: "Product not found or you do not have permission to update it",
-      });
+      return fail(
+        res,
+        null,
+        "Product not found or you do not have permission to update it",
+        404
+      );
     }
 
     // If product has a new category, ensure it exists in Category collection
@@ -837,26 +821,15 @@ const updateProduct = async (req, res) => {
       }
     }
 
-    res.json({
-      success: true,
-      message: "Product updated successfully",
-      data: product,
-    });
+    return ok(res, product, "Product updated successfully");
   } catch (error) {
     console.error("Update product error:", error);
 
     if (error.code === 11000) {
-      return res.status(400).json({
-        success: false,
-        message: "Product with this SKU already exists",
-      });
+      return fail(res, null, "Product with this SKU already exists", 400);
     }
 
-    res.status(500).json({
-      success: false,
-      message: "Error updating product",
-      error: error.message,
-    });
+    return fail(res, error, "Error updating product");
   }
 };
 
