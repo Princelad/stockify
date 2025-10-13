@@ -28,20 +28,17 @@ const registerUser = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    return ok(
-      res,
-      {
-        user: {
-          id: newUser._id,
-          name: newUser.name,
-          email: newUser.email,
-          role: newUser.role,
-        },
-        token,
+    return res.status(201).json({
+      success: true,
+      message: "User registered successfully",
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
       },
-      "User registered successfully",
-      201
-    );
+      token,
+    });
   } catch (err) {
     console.log(err);
     return fail(res, err, "Server Error");
@@ -77,20 +74,18 @@ const loginUser = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    return ok(
-      res,
-      {
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          avatar: user.avatar,
-        },
-        token,
+    return res.json({
+      success: true,
+      message: "Login successful",
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
       },
-      "Login successful"
-    );
+      token,
+    });
   } catch (err) {
     console.error("Login error:", err);
     return fail(res, err, "Server Error");

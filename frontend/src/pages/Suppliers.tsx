@@ -82,8 +82,8 @@ export default function Suppliers() {
       setLoading(true);
       const response = await apiService.getSuppliers();
 
-      if (response.success && response.data && "data" in response.data) {
-        setSuppliers(response.data.data as ExtendedSupplier[]); // API returns { data: { data: suppliers[], pagination: {} } }
+      if (response.success && response.data && "suppliers" in response.data) {
+        setSuppliers(response.data.suppliers as ExtendedSupplier[]); // API returns { data: { suppliers: [], pagination: {} } }
       } else {
         toast({
           title: "Error",
