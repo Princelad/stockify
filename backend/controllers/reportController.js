@@ -3,6 +3,7 @@ const Sale = require("../models/Sale");
 const Category = require("../models/Category");
 const Customer = require("../models/Customer");
 const mongoose = require("mongoose");
+const { ok, fail } = require("../utils/responder");
 
 /**
  * GET INVENTORY REPORT
@@ -201,9 +202,9 @@ const getInventoryReport = async (req, res) => {
             outOfStockItems: 0,
           };
 
-    res.json({
-      success: true,
-      data: {
+    return ok(
+      res,
+      {
         inventoryData: inventoryData.map((item) => ({
           id: item._id,
           name: item.name,
@@ -226,15 +227,11 @@ const getInventoryReport = async (req, res) => {
         supplierAnalysis,
         period,
       },
-      message: "Inventory report generated successfully",
-    });
+      "Inventory report generated successfully"
+    );
   } catch (error) {
     console.error("Error generating inventory report:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate inventory report",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to generate inventory report");
   }
 };
 
@@ -419,24 +416,20 @@ const getSalesReport = async (req, res) => {
             growthRate: 0,
           };
 
-    res.json({
-      success: true,
-      data: {
+    return ok(
+      res,
+      {
         salesData,
         topProducts,
         categorySales,
         summary,
         period,
       },
-      message: "Sales report generated successfully",
-    });
+      "Sales report generated successfully"
+    );
   } catch (error) {
     console.error("Error generating sales report:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate sales report",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to generate sales report");
   }
 };
 
@@ -679,24 +672,20 @@ const getTaxReport = async (req, res) => {
             complianceScore: 100,
           };
 
-    res.json({
-      success: true,
-      data: {
+    return ok(
+      res,
+      {
         taxData,
         gstRates,
         taxReturns,
         summary,
         period,
       },
-      message: "Tax report generated successfully",
-    });
+      "Tax report generated successfully"
+    );
   } catch (error) {
     console.error("Error generating tax report:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate tax report",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to generate tax report");
   }
 };
 

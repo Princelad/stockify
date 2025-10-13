@@ -110,17 +110,21 @@ const getSuppliers = async (req, res) => {
     const hasNextPage = parseInt(page) < totalPages;
     const hasPrevPage = parseInt(page) > 1;
 
-    return ok(res, {
-      suppliers: suppliersWithStats,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalItems: totalCount,
-        itemsPerPage: parseInt(limit),
-        hasNextPage,
-        hasPrevPage,
+    return ok(
+      res,
+      {
+        suppliers: suppliersWithStats,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages,
+          totalItems: totalCount,
+          itemsPerPage: parseInt(limit),
+          hasNextPage,
+          hasPrevPage,
+        },
       },
-    }, `Retrieved ${suppliersWithStats.length} suppliers`);
+      `Retrieved ${suppliersWithStats.length} suppliers`
+    );
   } catch (error) {
     console.error("Error fetching suppliers:", error);
     return fail(res, error, "Failed to fetch suppliers");
@@ -322,7 +326,12 @@ const deleteSupplier = async (req, res) => {
     });
 
     if (productCount > 0) {
-      return fail(res, null, `Cannot delete supplier. ${productCount} active products are associated with this supplier. Please reassign or remove products first.`, 400);
+      return fail(
+        res,
+        null,
+        `Cannot delete supplier. ${productCount} active products are associated with this supplier. Please reassign or remove products first.`,
+        400
+      );
     }
 
     // Soft delete
