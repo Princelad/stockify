@@ -72,6 +72,7 @@ const navItems: NavItem[] = [
   { label: "Billing", icon: FileText, route: "/billing" },
   { label: "Customers", icon: Users, route: "/customers" },
   { label: "Suppliers", icon: Truck, route: "/suppliers" },
+  { label: "Returns & Refunds", icon: Receipt, route: "/returns" },
   {
     label: "Reports",
     icon: BarChart3,

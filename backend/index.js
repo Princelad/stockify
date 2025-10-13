@@ -53,6 +53,7 @@ const supplierRoutes = require("./routes/suppliers");
 const labelRoutes = require("./routes/labels");
 const reportRoutes = require("./routes/reports");
 const userRoutes = require("./routes/users");
+const returnRoutes = require("./routes/returns");
 
 // Middleware
 app.use(helmet());
@@ -163,6 +164,7 @@ app.use("/api/suppliers", supplierRoutes);
 app.use("/api/labels", labelRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/returns", returnRoutes);
 
 // Database connection and server startup
 const startServer = async () => {

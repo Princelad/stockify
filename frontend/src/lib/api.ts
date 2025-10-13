@@ -12,6 +12,14 @@ import type {
   Category,
 } from "@/types/product";
 
+import type {
+  Return,
+  ReturnEligibility,
+  CreateReturnData,
+  ReturnFilters,
+  ReturnsResponse,
+} from "@/types/return";
+
 // Additional types for sales and customers
 export interface Customer {
   _id: string;
@@ -644,6 +652,64 @@ class ApiService {
   > {
     const query = period ? `?period=${period}` : "";
     return this.request(`/sales/stats${query}`, {
+      method: "GET",
+    });
+  }
+
+  // =====================================================
+  // RETURNS API METHODS
+  // =====================================================
+
+  async createReturn(
+    returnData: CreateReturnData
+  ): Promise<ApiResponse<Return>> {
+    return this.request("/returns", {
+      method: "POST",
+      body: JSON.stringify(returnData),
+    });
+  }
+
+  async getReturns(
+    filters?: ReturnFilters
+  ): Promise<ApiResponse<ReturnsResponse>> {
+    const queryParams = new URLSearchParams();
+
+    if (filters?.page) queryParams.append("page", filters.page.toString());
+    if (filters?.limit) queryParams.append("limit", filters.limit.toString());
+    if (filters?.status) queryParams.append("status", filters.status);
+    if (filters?.startDate) queryParams.append("startDate", filters.startDate);
+    if (filters?.endDate) queryParams.append("endDate", filters.endDate);
+    if (filters?.customerId)
+      queryParams.append("customerId", filters.customerId);
+    if (filters?.search) queryParams.append("search", filters.search);
+
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : "";
+    return this.request(`/returns${query}`, {
+      method: "GET",
+    });
+  }
+
+  async getReturnById(returnId: string): Promise<ApiResponse<Return>> {
+    return this.request(`/returns/${returnId}`, {
+      method: "GET",
+    });
+  }
+
+  async processReturn(
+    returnId: string,
+    action: "approve" | "reject",
+    notes?: string
+  ): Promise<ApiResponse<Return>> {
+    return this.request(`/returns/${returnId}/process`, {
+      method: "PUT",
+      body: JSON.stringify({ action, notes }),
+    });
+  }
+
+  async getReturnEligibility(
+    saleId: string
+  ): Promise<ApiResponse<ReturnEligibility>> {
+    return this.request(`/returns/eligibility/${saleId}`, {
       method: "GET",
     });
   }

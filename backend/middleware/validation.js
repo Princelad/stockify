@@ -80,8 +80,47 @@ const validateProduct = (req, res, next) => {
   next();
 };
 
+const returnSchema = Joi.object({
+  saleId: Joi.string().required().trim(),
+  items: Joi.array()
+    .items(
+      Joi.object({
+        productId: Joi.string().required().trim(),
+        quantityReturned: Joi.number().required().min(1),
+        reason: Joi.string()
+          .valid(
+            "defective",
+            "wrong-item",
+            "customer-changed-mind",
+            "damaged",
+            "expired",
+            "other"
+          )
+          .required(),
+      })
+    )
+    .required()
+    .min(1),
+  refundMethod: Joi.string()
+    .valid("cash", "card", "upi", "netbanking", "store-credit")
+    .default("cash"),
+  notes: Joi.string().optional().allow("").trim(),
+});
+
+const validateReturn = (req, res, next) => {
+  const { error } = returnSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({
+      success: false,
+      message: error.details[0].message,
+    });
+  }
+  next();
+};
+
 module.exports = {
   validateRegister,
   validateLogin,
   validateProduct,
+  validateReturn,
 };

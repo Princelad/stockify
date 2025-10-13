@@ -17,6 +17,7 @@ import Categories from "@/pages/Categories";
 import Billing from "@/pages/Billing";
 import Customers from "@/pages/Customers";
 import Suppliers from "@/pages/Suppliers";
+import Returns from "@/pages/Returns";
 import Reports from "@/pages/Reports";
 import SalesReport from "@/pages/reports/SalesReport";
 import InventoryReport from "@/pages/reports/InventoryReport";
@@ -91,6 +92,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Suppliers />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/returns"
+                element={
+                  <ProtectedRoute>
+                    <Returns />
                   </ProtectedRoute>
                 }
               />

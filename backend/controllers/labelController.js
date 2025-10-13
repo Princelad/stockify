@@ -118,10 +118,12 @@ const createTemplate = async (req, res) => {
 
     // Validate required fields
     if (!name || !size || !fields || !layout) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing required fields: name, size, fields, layout",
-      });
+      return fail(
+        res,
+        null,
+        "Missing required fields: name, size, fields, layout",
+        400
+      );
     }
 
     // Check if template name already exists for this user
@@ -197,10 +199,7 @@ const updateTemplate = async (req, res) => {
     });
 
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: "Template not found or access denied",
-      });
+      return fail(res, null, "Template not found or access denied", 404);
     }
 
     // Update fields
@@ -232,14 +231,7 @@ const updateTemplate = async (req, res) => {
     );
   } catch (error) {
     console.error("Error updating label template:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update label template",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal server error",
-    });
+    return fail(res, error, "Failed to update label template");
   }
 };
 
@@ -252,10 +244,7 @@ const deleteTemplate = async (req, res) => {
     const { id } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid template ID",
-      });
+      return fail(res, null, "Invalid template ID", 400);
     }
 
     const template = await LabelTemplate.findOne({
@@ -265,30 +254,17 @@ const deleteTemplate = async (req, res) => {
     });
 
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: "Template not found or access denied",
-      });
+      return fail(res, null, "Template not found or access denied", 404);
     }
 
     // Soft delete
     template.isActive = false;
     await template.save();
 
-    res.json({
-      success: true,
-      message: "Label template deleted successfully",
-    });
+    return ok(res, null, "Label template deleted successfully");
   } catch (error) {
     console.error("Error deleting label template:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete label template",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal server error",
-    });
+    return fail(res, error, "Failed to delete label template");
   }
 };
 
@@ -301,10 +277,7 @@ const generateLabels = async (req, res) => {
     const { templateId, products, customText, quantity = 1 } = req.body;
 
     if (!templateId) {
-      return res.status(400).json({
-        success: false,
-        message: "Template ID is required",
-      });
+      return fail(res, null, "Template ID is required", 400);
     }
 
     // Get template (default or custom)
@@ -318,6 +291,14 @@ const generateLabels = async (req, res) => {
           size: '2" x 1"',
           fields: ["name", "price", "barcode"],
           layout: "single",
+          isDefault: true,
+          settings: {
+            fontSize: 10,
+            fontFamily: "Arial",
+            backgroundColor: "#ffffff",
+            textColor: "#000000",
+            showBorder: true,
+          },
         },
         template2: {
           id: "template2",
@@ -325,6 +306,14 @@ const generateLabels = async (req, res) => {
           size: '3" x 2"',
           fields: ["name", "sku", "price", "category", "barcode"],
           layout: "single",
+          isDefault: true,
+          settings: {
+            fontSize: 11,
+            fontFamily: "Arial",
+            backgroundColor: "#ffffff",
+            textColor: "#000000",
+            showBorder: true,
+          },
         },
         template3: {
           id: "template3",
@@ -332,15 +321,17 @@ const generateLabels = async (req, res) => {
           size: '1.5" x 1"',
           fields: ["name", "price"],
           layout: "grid",
-        },
-        template4: {
-          id: "template4",
-          name: "Barcode Label",
-          size: '2" x 0.75"',
-          fields: ["name", "sku", "barcode"],
-          layout: "single",
+          isDefault: true,
+          settings: {
+            fontSize: 12,
+            fontFamily: "Arial",
+            backgroundColor: "#ffffff",
+            textColor: "#000000",
+            showBorder: false,
+          },
         },
       };
+
       template = defaultTemplates[templateId];
     } else {
       // Custom template
@@ -363,10 +354,7 @@ const generateLabels = async (req, res) => {
     }
 
     if (!template) {
-      return res.status(404).json({
-        success: false,
-        message: "Template not found",
-      });
+      return fail(res, null, "Template not found", 404);
     }
 
     let labelData = [];
@@ -442,16 +430,12 @@ const generateLabels = async (req, res) => {
         });
       }
     } else {
-      return res.status(400).json({
-        success: false,
-        message: "Either products or custom text is required",
-      });
+      return fail(res, null, "Either products or custom text is required", 400);
     }
 
-    res.json({
-      success: true,
-      message: "Labels generated successfully",
-      data: {
+    return ok(
+      res,
+      {
         labels: labelData,
         template: template,
         totalLabels: labelData.length,
@@ -463,17 +447,11 @@ const generateLabels = async (req, res) => {
           customLabelsCount: customText ? quantity : 0,
         },
       },
-    });
+      "Labels generated successfully"
+    );
   } catch (error) {
     console.error("Error generating labels:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate labels",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal server error",
-    });
+    return fail(res, error, "Failed to generate labels");
   }
 };
 
