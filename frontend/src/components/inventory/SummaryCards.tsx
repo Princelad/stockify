@@ -1,5 +1,10 @@
 import { useEffect, useState } from "react";
-import { Package, AlertTriangle, DollarSign, CreditCard } from "lucide-react";
+import {
+  Package,
+  AlertTriangle,
+  CreditCard,
+  IndianRupeeIcon,
+} from "lucide-react";
 import { apiService } from "@/lib/api";
 import { themeColors } from "@/contexts/ThemeContext";
 
@@ -27,7 +32,7 @@ export function SummaryCards() {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: "INR",
     }).format(amount);
   };
 
@@ -66,8 +71,6 @@ export function SummaryCards() {
       label: "Total Products",
       value: overview.totalProducts || 0,
       icon: Package,
-      trend: "+12%",
-      trendColor: "text-green-600 dark:text-green-400",
       sub: "Products in inventory",
       iconColor: "text-blue-600 dark:text-blue-400",
       bgLight: "bg-blue-50",
@@ -77,11 +80,6 @@ export function SummaryCards() {
       label: "Low Stock Items",
       value: lowStockCount,
       icon: AlertTriangle,
-      trend: lowStockCount > 0 ? "Alert" : "Good",
-      trendColor:
-        lowStockCount > 0
-          ? "text-red-600 dark:text-red-400"
-          : "text-green-600 dark:text-green-400",
       sub: "Items below reorder level",
       iconColor: "text-yellow-600 dark:text-yellow-400",
       bgLight: "bg-yellow-50",
@@ -89,10 +87,12 @@ export function SummaryCards() {
     },
     {
       label: "Inventory Value",
-      value: formatCurrency(pricing.totalRetailValue || 0),
-      icon: DollarSign,
-      trend: "+5%",
-      trendColor: "text-green-600 dark:text-green-400",
+      value: new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        currencyDisplay: "narrowSymbol",
+      }).format(pricing.totalRetailValue || 0),
+      icon: IndianRupeeIcon,
       sub: "Total retail value",
       iconColor: "text-green-600 dark:text-green-400",
       bgLight: "bg-green-50",
@@ -102,8 +102,6 @@ export function SummaryCards() {
       label: "Profit Margin",
       value: formatPercentage(pricing.avgRetailMargin || 0),
       icon: CreditCard,
-      trend: "Avg",
-      trendColor: "text-blue-600 dark:text-blue-400",
       sub: "Average retail margin",
       iconColor: "text-purple-600 dark:text-purple-400",
       bgLight: "bg-purple-50",
@@ -124,12 +122,9 @@ export function SummaryCards() {
               {card.value}
             </div>
             <div
-              className={`${themeColors.text.secondary} text-sm font-medium flex items-center gap-2`}
+              className={`${themeColors.text.secondary} text-sm font-medium`}
             >
               {card.label}
-              <span className={`ml-2 text-xs font-semibold ${card.trendColor}`}>
-                {card.trend}
-              </span>
             </div>
             <div className={`text-xs ${themeColors.text.tertiary} mt-1`}>
               {card.sub}

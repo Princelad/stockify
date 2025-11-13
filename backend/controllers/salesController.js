@@ -1,6 +1,7 @@
 const Sale = require("../models/Sale");
 const Product = require("../models/Product");
 const Customer = require("../models/Customer");
+const invoicePDFService = require("../services/invoicePDFService");
 const mongoose = require("mongoose");
 const { ok, fail } = require("../utils/responder");
 
@@ -53,6 +54,46 @@ const getSales = async (req, res) => {
   } catch (error) {
     console.error("Error fetching sales:", error);
     return fail(res, error, "Failed to fetch sales");
+  }
+};
+
+/**
+ * Generate invoice PDF for a sale
+ */
+const generateSalePDF = async (req, res) => {
+  try {
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    })
+      .populate("customer")
+      .populate("items.product")
+      .lean();
+
+    if (!sale) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found" });
+    }
+
+    const pdfBuffer = await invoicePDFService.generateInvoicePDF(sale, {
+      companyName: process.env.COMPANY_NAME || "Stockify",
+      companyAddress: process.env.COMPANY_ADDRESS || "",
+      footer: process.env.INVOICE_FOOTER || "Thank you for your business!",
+    });
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Length": pdfBuffer.length,
+      "Content-Disposition": `attachment; filename="invoice-${
+        sale.invoiceNumber || sale._id
+      }.pdf"`,
+    });
+
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    console.error("Error generating invoice PDF:", error);
+    return fail(res, error, "Failed to generate invoice PDF");
   }
 };
 
@@ -425,6 +466,7 @@ const getSalesStats = async (req, res) => {
 
 module.exports = {
   getSales,
+  generateSalePDF,
   getSale,
   createSale,
   updateSalePayment,

@@ -4,6 +4,7 @@ const {
   getSales,
   getSale,
   createSale,
+  generateSalePDF,
   updateSalePayment,
   deleteSale,
   getSalesStats,
@@ -41,6 +42,13 @@ router.get("/:id", getSale);
  * @access  Private
  */
 router.post("/", createSale);
+
+/**
+ * @route   GET /api/sales/:id/pdf
+ * @desc    Generate and download invoice PDF for a sale
+ * @access  Private
+ */
+router.get("/:id/pdf", generateSalePDF);
 
 /**
  * @route   PUT /api/sales/:id/payment

@@ -23,12 +23,9 @@ import {
   Receipt,
   Zap,
   Truck,
-  Moon,
-  Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser, clearAuthData } from "@/lib/api";
-import { useTheme } from "@/contexts/ThemeContext";
 
 interface NavItem {
   label: string;
@@ -72,7 +69,6 @@ const navItems: NavItem[] = [
   { label: "Billing", icon: FileText, route: "/billing" },
   { label: "Customers", icon: Users, route: "/customers" },
   { label: "Suppliers", icon: Truck, route: "/suppliers" },
-  { label: "Returns & Refunds", icon: Receipt, route: "/returns" },
   {
     label: "Reports",
     icon: BarChart3,
@@ -378,9 +374,7 @@ const Sidebar: React.FC<{
 const Topbar: React.FC<{
   onSidebarToggle: () => void;
   isCollapsed: boolean;
-  toggleTheme: () => void;
-  isDarkMode: boolean;
-}> = ({ onSidebarToggle, isCollapsed, toggleTheme, isDarkMode }) => {
+}> = ({ onSidebarToggle, isCollapsed }) => {
   const [showProfileDropdown, setShowProfileDropdown] =
     useState<boolean>(false);
   const user = getCurrentUser() as User | null;
@@ -443,19 +437,7 @@ const Topbar: React.FC<{
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg hover:bg-accent transition-colors duration-200"
-          title={`Switch to ${isDarkMode ? "light" : "dark"} mode`}
-          aria-label="Toggle theme"
-        >
-          {isDarkMode ? (
-            <Sun className="h-5 w-5 text-foreground" />
-          ) : (
-            <Moon className="h-5 w-5 text-foreground" />
-          )}
-        </button>
+        {/* Theme Toggle removed */}
 
         {/* Notifications */}
         <button
@@ -541,7 +523,7 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
   activeSection = "Dashboard",
 }) => {
   const navigate = useNavigate();
-  const { toggleTheme, isDarkMode } = useTheme();
+  // Theme toggle removed; keep layout light-only
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // Check localStorage for saved preference, fallback to mobile detection
@@ -666,12 +648,7 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
         )}
       >
         {/* Top Navigation */}
-        <Topbar
-          onSidebarToggle={toggleSidebar}
-          isCollapsed={isCollapsed}
-          toggleTheme={toggleTheme}
-          isDarkMode={isDarkMode}
-        />
+        <Topbar onSidebarToggle={toggleSidebar} isCollapsed={isCollapsed} />
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto bg-background">{children}</main>

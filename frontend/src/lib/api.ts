@@ -249,14 +249,25 @@ class ApiService {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          data.message || `HTTP error! status: ${response.status}`
+        // Attach server-provided error details when available to aid debugging
+        const serverError = data && data.error ? data.error : undefined;
+        const message =
+          data && data.message
+            ? data.message
+            : `HTTP error! status: ${response.status}`;
+        const err = new Error(
+          serverError ? `${message} - ${JSON.stringify(serverError)}` : message
         );
+        throw err;
       }
 
       // Also check for application-level errors (success: false)
       if (data.success === false) {
-        throw new Error(data.message || "Request failed");
+        const serverError = data && data.error ? data.error : undefined;
+        const message = data && data.message ? data.message : "Request failed";
+        throw new Error(
+          serverError ? `${message} - ${JSON.stringify(serverError)}` : message
+        );
       }
 
       return data;
@@ -624,6 +635,23 @@ class ApiService {
       method: "POST",
       body: JSON.stringify(saleData),
     });
+  }
+
+  async getSalePDF(id: string): Promise<Blob> {
+    const response = await fetch(`${this.baseURL}/sales/${id}/pdf`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Failed to fetch invoice PDF");
+    }
+
+    return response.blob();
   }
 
   async updateSalePayment(

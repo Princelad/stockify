@@ -168,6 +168,12 @@ export default function Customers() {
       return;
     }
 
+    toast({
+      title: "Export Started",
+      description: `Exporting customers as ${format.toUpperCase()}...`,
+      type: "info",
+    });
+
     const exportData = filteredCustomers.map((customer: Customer) => ({
       Name: customer.name,
       Email: customer.email,
@@ -175,9 +181,9 @@ export default function Customers() {
       Address: customer.address,
       Type: customer.type,
       "Total Purchases": customer.totalPurchases,
-      "Total Amount": `$${customer.totalAmount.toFixed(2)}`,
-      "Outstanding Amount": `$${customer.outstandingAmount.toFixed(2)}`,
-      "Credit Limit": `$${customer.creditLimit.toFixed(2)}`,
+      "Total Amount": `₹${customer.totalAmount.toFixed(2)}`,
+      "Outstanding Amount": `₹${customer.outstandingAmount.toFixed(2)}`,
+      "Credit Limit": `₹${customer.creditLimit.toFixed(2)}`,
       "Last Purchase": customer.lastPurchase,
       Status: customer.status,
     }));
@@ -197,24 +203,29 @@ export default function Customers() {
     ];
 
     try {
+      let result: any;
       if (format === "csv") {
-        exportToCSV({ filename: "customers", data: exportData, headers });
-        toast({
-          title: "Export Successful",
-          description: "Customer data exported to Excel successfully",
-          type: "success",
-        });
-      } else {
-        exportToPDF({
-          filename: "customers-report",
+        result = exportToCSV({
+          filename: `customers-${new Date().toISOString().split("T")[0]}`,
           data: exportData,
           headers,
         });
+      } else {
+        result = await exportToPDF({
+          filename: `Customers Report - ${new Date().toLocaleDateString()}`,
+          data: exportData,
+          headers,
+        });
+      }
+
+      if (result && result.success) {
         toast({
-          title: "Export Successful",
-          description: "Customer data exported to PDF successfully",
+          title: "Export Complete",
+          description: result.message || "Export finished successfully",
           type: "success",
         });
+      } else {
+        throw new Error(result?.error || "Export failed");
       }
     } catch (error) {
       console.error("Export error:", error);

@@ -729,15 +729,35 @@ export default function LabelsAndBarcodes() {
       const printWindow = window.open("", "_blank");
 
       if (printWindow) {
+        // Write the PDF embed into the new window. Don't revoke the object URL immediately —
+        // some browsers may cancel loading if the URL is revoked too soon. Revoke after a delay.
         printWindow.document.write(`
           <html>
             <head><title>Print Labels</title></head>
             <body style="margin:0">
-              <embed src="${url}" width="100%" height="100%" type="application/pdf">
+              <embed id="labelPdf" src="${url}" width="100%" height="100%" type="application/pdf">
             </body>
           </html>
         `);
         printWindow.document.close();
+
+        try {
+          // Focus and (optionally) open print dialog once the PDF loads
+          printWindow.focus();
+          // Attempt to print after a short delay to allow embed to load
+          setTimeout(() => {
+            try {
+              printWindow.print?.();
+            } catch (e) {
+              // ignore print errors (popup blockers)
+            }
+          }, 500);
+        } catch (e) {
+          // ignore
+        }
+
+        // Revoke object URL after delay to ensure the PDF has time to load in the new window
+        setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
       } else {
         // Fallback: download the PDF
         const a = document.createElement("a");
@@ -746,9 +766,10 @@ export default function LabelsAndBarcodes() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-      }
 
-      URL.revokeObjectURL(url);
+        // Revoke soon after download initiated
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
       showNotification(
         "success",
         "Labels Ready",
