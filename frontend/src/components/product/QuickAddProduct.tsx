@@ -395,7 +395,7 @@ const QuickAddProduct: React.FC<QuickAddProductProps> = ({
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="costPrice">Cost Price * ($)</Label>
+                <Label htmlFor="costPrice">Cost Price * (₹)</Label>
                 <Input
                   id="costPrice"
                   type="number"
@@ -410,7 +410,7 @@ const QuickAddProduct: React.FC<QuickAddProductProps> = ({
               </div>
 
               <div>
-                <Label htmlFor="sellingPrice">Selling Price * ($)</Label>
+                <Label htmlFor="sellingPrice">Selling Price * (₹)</Label>
                 <Input
                   id="sellingPrice"
                   type="number"

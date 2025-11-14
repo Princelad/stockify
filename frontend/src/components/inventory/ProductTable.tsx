@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Search, Plus, Download, Upload } from "lucide-react";
 import { apiService } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils/format";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { QuickAddProduct } from "@/components/product";
 
@@ -92,12 +93,7 @@ export function ProductTable() {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(amount);
-  };
+  // Use shared formatter (defaults to INR)
 
   const handleAddProductSuccess = () => {
     setIsAddProductOpen(false);

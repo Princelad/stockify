@@ -35,6 +35,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { apiService, type Customer as ApiCustomer } from "@/lib/api";
 import { type Product } from "@/types/product";
 import { useToast } from "@/hooks/useToast";
+import { formatCurrency } from "@/lib/utils/format";
 
 interface BillItem {
   id: string;
@@ -509,11 +510,11 @@ export default function Billing() {
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">
-                          ₹
-                          {(selectedCustomer?.isDealer && product.wholesalePrice
-                            ? product.wholesalePrice
-                            : product.sellingPrice
-                          ).toLocaleString()}
+                          {formatCurrency(
+                            selectedCustomer?.isDealer && product.wholesalePrice
+                              ? product.wholesalePrice
+                              : product.sellingPrice
+                          )}
                         </p>
                         <Button size="sm" className="mt-1">
                           <Plus className="h-3 w-3" />
@@ -548,7 +549,9 @@ export default function Billing() {
                 >
                   <div className="flex-1">
                     <p className="font-medium">{item.name}</p>
-                    <p className="text-sm text-gray-600">₹{item.price} each</p>
+                    <p className="text-sm text-gray-600">
+                      {formatCurrency(item.price)} each
+                    </p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Input
@@ -562,7 +565,7 @@ export default function Billing() {
                     />
                     <div className="text-right min-w-20">
                       <p className="font-semibold">
-                        ₹{item.total.toLocaleString()}
+                        {formatCurrency(item.total)}
                       </p>
                     </div>
                     <Button
@@ -632,17 +635,17 @@ export default function Billing() {
                 <div className="space-y-2 pt-4 border-t">
                   <div className="flex justify-between">
                     <span>Subtotal:</span>
-                    <span>₹{subtotal.toLocaleString()}</span>
+                    <span>{formatCurrency(subtotal)}</span>
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-green-600">
                       <span>Discount ({discount}%):</span>
-                      <span>-₹{discountAmount.toLocaleString()}</span>
+                      <span>-{formatCurrency(discountAmount)}</span>
                     </div>
                   )}
                   <div className="flex justify-between text-lg font-semibold border-t pt-2">
                     <span>Total:</span>
-                    <span>₹{total.toLocaleString()}</span>
+                    <span>{formatCurrency(total)}</span>
                   </div>
                 </div>
 

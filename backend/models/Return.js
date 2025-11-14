@@ -82,7 +82,8 @@ returnSchema.pre("save", async function (next) {
 // Index for efficient queries
 returnSchema.index({ createdBy: 1, createdAt: -1 });
 returnSchema.index({ sale: 1 });
-returnSchema.index({ returnNumber: 1 });
+// `returnNumber` uses `unique: true` on its schema path which creates an index.
+// Avoid a duplicate index by not declaring a separate `schema.index({ returnNumber: 1 })`.
 
 // Virtual for return age
 returnSchema.virtual("returnAge").get(function () {

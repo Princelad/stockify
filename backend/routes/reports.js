@@ -3,7 +3,6 @@ const router = express.Router();
 const {
   getInventoryReport,
   getSalesReport,
-  getTaxReport,
 } = require("../controllers/reportController");
 
 const auth = require("../middleware/auth");
@@ -33,6 +32,5 @@ router.get("/sales", getSalesReport);
  * @access  Private
  * @params  period, gstRate
  */
-router.get("/tax", getTaxReport);
 
 module.exports = router;

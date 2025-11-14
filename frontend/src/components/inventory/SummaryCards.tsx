@@ -6,6 +6,7 @@ import {
   IndianRupeeIcon,
 } from "lucide-react";
 import { apiService } from "@/lib/api";
+import { formatCurrency } from "@/lib/utils/format";
 import { themeColors } from "@/contexts/ThemeContext";
 
 export function SummaryCards() {
@@ -29,12 +30,7 @@ export function SummaryCards() {
     fetchStats();
   }, []);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "INR",
-    }).format(amount);
-  };
+  // use shared formatter (defaults to INR)
 
   const formatPercentage = (value: number) => {
     return `${(value * 100).toFixed(1)}%`;
@@ -87,11 +83,7 @@ export function SummaryCards() {
     },
     {
       label: "Inventory Value",
-      value: new Intl.NumberFormat("en-IN", {
-        style: "currency",
-        currency: "INR",
-        currencyDisplay: "narrowSymbol",
-      }).format(pricing.totalRetailValue || 0),
+      value: formatCurrency(pricing.totalRetailValue || 0),
       icon: IndianRupeeIcon,
       sub: "Total retail value",
       iconColor: "text-green-600 dark:text-green-400",

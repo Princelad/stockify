@@ -76,7 +76,6 @@ const navItems: NavItem[] = [
     children: [
       { label: "Sales Report", route: "/reports/sales" },
       { label: "Inventory Report", route: "/reports/inventory" },
-      { label: "Tax Report", route: "/reports/tax" },
     ],
   },
   { label: "Labels & Barcodes", icon: Tag, route: "/labels-barcodes" },
