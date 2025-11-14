@@ -24,6 +24,7 @@
 \usepackage{subcaption}
 \usepackage{tocloft}
 \usepackage{parskip}
+\usepackage{bookmark}
 
 % Page geometry setup as per guidelines
 \geometry{
@@ -47,7 +48,7 @@
 % Header and footer setup
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\footnotesize Student ID: [Your Student ID]}
+\fancyhead[L]{\footnotesize Student ID: 23CS037, 23CS060}
 \fancyfoot[L]{\footnotesize Department of Computer Science \& Engineering}
 \fancyfoot[R]{\footnotesize \thepage}
 \renewcommand{\headrulewidth}{0pt}
@@ -101,7 +102,7 @@
     urlcolor=primaryblue,
     citecolor=primaryblue,
     pdftitle={Stockify - Inventory Management System},
-    pdfauthor={Student Name},
+    pdfauthor={Prince Lad, Dhaval Patel},
     pdfsubject={5th Semester Project Report},
     pdfkeywords={Inventory Management, Stock Management, Billing System, React, Node.js, MongoDB}
 }
@@ -113,13 +114,7 @@
 
 \begin{document}
 
-% Cover page
-\input{chapters/00_cover}
-\newpage
-
-% Certificate pages
-\input{chapters/01_certificates}
-\newpage
+% Cover and certificate pages removed for compact report
 
 % Table of contents
 \tableofcontents
@@ -129,28 +124,25 @@
 \listoffigures
 \newpage
 
-% List of tables
-\listoftables
-\newpage
-
 % Abstract
-\input{chapters/02_abstract}
+\input{chapters/00_abstract}
 \newpage
 
 % Main chapters
-\input{chapters/03_introduction}
-\input{chapters/04_motivation}
-\input{chapters/05_technology_stack}
-\input{chapters/06_system_architecture}
-\input{chapters/07_challenges_solutions}
-\input{chapters/08_testing_validation}
-\input{chapters/09_future_enhancements}
-\input{chapters/10_conclusion}
+\input{chapters/01_introduction}
+\input{chapters/02_motivation}
+\input{chapters/03_technology_stack}
+\input{chapters/04_system_architecture}
+\input{chapters/05_implementation}
+\input{chapters/06_challenges_solutions}
+\input{chapters/07_testing_validation}
+\input{chapters/08_future_enhancements}
+\input{chapters/09_conclusion}
 
 % References
-\input{chapters/11_references}
+\input{chapters/10_references}
 
 % Appendices
-\input{chapters/12_appendices}
+\input{chapters/11_appendices}
 
 \end{document}
