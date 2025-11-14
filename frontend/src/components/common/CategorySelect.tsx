@@ -66,8 +66,26 @@ export default function CategorySelect({
       console.log("Categories API response:", response);
       if (response.success && response.data) {
         const categoryData = response.data as any;
-        // Fix: Use the correct property name from API response
-        const categoriesArray = categoryData.categories || [];
+        // API may return categories as an array of strings (from products)
+        // or as objects ({ _id, name, count }). Normalize to objects.
+        const rawCategories = categoryData.categories || [];
+        const categoriesArray: Category[] = rawCategories.map((c: any) => {
+          if (typeof c === "string") {
+            return { _id: c, name: c, count: 0 } as Category;
+          }
+          // If object, prefer name/_id/count shape
+          return {
+            _id: c._id || c.name,
+            name: c.name || c._id,
+            count: c.count || 0,
+            description: c.description,
+            type: c.type,
+            isPopular: c.isPopular,
+            isDefault: c.isDefault,
+            createdBy: c.createdBy,
+          } as Category;
+        });
+
         console.log("Categories loaded:", categoriesArray);
         setCategories(categoriesArray);
 
@@ -182,7 +200,11 @@ export default function CategorySelect({
               ) : (
                 <>
                   {categories.map((category) => (
-                    <SelectItem key={category._id} value={category._id}>
+                    // Use category name as the value because backend expects product.category to be the name string
+                    <SelectItem
+                      key={category._id}
+                      value={category.name || category._id}
+                    >
                       <div className="flex items-center justify-between w-full">
                         <span>{category.name || category._id}</span>
                         <span className="text-xs text-gray-500 ml-2">

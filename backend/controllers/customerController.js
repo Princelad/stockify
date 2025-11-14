@@ -1,4 +1,5 @@
 const Customer = require("../models/Customer");
+const { ok, fail } = require("../utils/responder");
 
 /**
  * Get all customers with pagination and search
@@ -7,10 +8,14 @@ const getCustomers = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = "" } = req.query;
 
+<<<<<<< HEAD
     const filters = {
       createdBy: req.user._id, // Add user scoping
     };
     
+=======
+    const filters = { createdBy: req.user._id };
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
     if (search) {
       filters.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -26,25 +31,18 @@ const getCustomers = async (req, res) => {
 
     const total = await Customer.countDocuments(filters);
 
-    res.json({
-      success: true,
-      data: {
-        customers,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / limit),
-          totalItems: total,
-          itemsPerPage: parseInt(limit),
-        },
+    return ok(res, {
+      customers,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit),
       },
     });
   } catch (error) {
     console.error("Error fetching customers:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch customers",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch customers");
   }
 };
 
@@ -53,28 +51,19 @@ const getCustomers = async (req, res) => {
  */
 const getCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id).populate(
-      "purchaseHistory.saleId"
-    );
+    const customer = await Customer.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    }).populate("purchaseHistory.saleId");
 
     if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
+      return fail(res, null, "Customer not found", 404);
     }
 
-    res.json({
-      success: true,
-      data: customer,
-    });
+    return ok(res, customer);
   } catch (error) {
     console.error("Error fetching customer:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch customer",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch customer");
   }
 };
 
@@ -87,23 +76,28 @@ const createCustomer = async (req, res) => {
 
     // Validate required fields
     if (!name) {
-      return res.status(400).json({
-        success: false,
-        message: "Customer name is required",
-      });
+      return fail(res, null, "Customer name is required", 400);
     }
 
     // Check if customer with same phone already exists for this user
     if (phone) {
+<<<<<<< HEAD
       const existingCustomer = await Customer.findOne({ 
         phone,
         createdBy: req.user._id 
+=======
+      const existingCustomer = await Customer.findOne({
+        phone,
+        createdBy: req.user._id,
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
       });
       if (existingCustomer) {
-        return res.status(409).json({
-          success: false,
-          message: "Customer with this phone number already exists",
-        });
+        return fail(
+          res,
+          null,
+          "Customer with this phone number already exists",
+          409
+        );
       }
     }
 
@@ -118,27 +112,20 @@ const createCustomer = async (req, res) => {
 
     await customer.save();
 
-    res.status(201).json({
-      success: true,
-      message: "Customer created successfully",
-      data: customer,
-    });
+    return ok(res, customer, "Customer created successfully", 201);
   } catch (error) {
     console.error("Error creating customer:", error);
 
     // Handle duplicate key errors
     if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Customer with this phone number already exists",
-      });
+      return fail(
+        res,
+        null,
+        "Customer with this phone number already exists",
+        409
+      );
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to create customer",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to create customer");
   }
 };
 
@@ -149,22 +136,27 @@ const updateCustomer = async (req, res) => {
   try {
     const { name, email, phone, address, isDealer } = req.body;
 
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
     if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
+      return fail(res, null, "Customer not found", 404);
     }
 
     // Check if phone is being changed and if new phone already exists
     if (phone && phone !== customer.phone) {
-      const existingCustomer = await Customer.findOne({ phone });
+      const existingCustomer = await Customer.findOne({
+        phone,
+        createdBy: req.user._id,
+      });
       if (existingCustomer) {
-        return res.status(409).json({
-          success: false,
-          message: "Another customer with this phone number already exists",
-        });
+        return fail(
+          res,
+          null,
+          "Another customer with this phone number already exists",
+          409
+        );
       }
     }
 
@@ -177,26 +169,19 @@ const updateCustomer = async (req, res) => {
 
     await customer.save();
 
-    res.json({
-      success: true,
-      message: "Customer updated successfully",
-      data: customer,
-    });
+    return ok(res, customer, "Customer updated successfully");
   } catch (error) {
     console.error("Error updating customer:", error);
 
     if (error.code === 11000) {
-      return res.status(409).json({
-        success: false,
-        message: "Another customer with this phone number already exists",
-      });
+      return fail(
+        res,
+        null,
+        "Another customer with this phone number already exists",
+        409
+      );
     }
-
-    res.status(500).json({
-      success: false,
-      message: "Failed to update customer",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to update customer");
   }
 };
 
@@ -205,36 +190,31 @@ const updateCustomer = async (req, res) => {
  */
 const deleteCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    });
 
     if (!customer) {
-      return res.status(404).json({
-        success: false,
-        message: "Customer not found",
-      });
+      return fail(res, null, "Customer not found", 404);
     }
 
     // Check if customer has outstanding dues
     if (customer.totalDue > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot delete customer with outstanding dues",
-      });
+      return fail(
+        res,
+        null,
+        "Cannot delete customer with outstanding dues",
+        400
+      );
     }
 
-    await Customer.findByIdAndDelete(req.params.id);
+    await Customer.deleteOne({ _id: req.params.id, createdBy: req.user._id });
 
-    res.json({
-      success: true,
-      message: "Customer deleted successfully",
-    });
+    return ok(res, null, "Customer deleted successfully");
   } catch (error) {
     console.error("Error deleting customer:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete customer",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to delete customer");
   }
 };
 
@@ -246,14 +226,15 @@ const searchCustomers = async (req, res) => {
     const { q } = req.query;
 
     if (!q) {
-      return res.json({
-        success: true,
-        data: [],
-      });
+      return ok(res, []);
     }
 
     const customers = await Customer.find({
+<<<<<<< HEAD
       createdBy: req.user._id, // Add user scoping
+=======
+      createdBy: req.user._id,
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
       $or: [
         { name: { $regex: q, $options: "i" } },
         { phone: { $regex: q, $options: "i" } },
@@ -262,17 +243,10 @@ const searchCustomers = async (req, res) => {
       .select("name phone email isDealer")
       .limit(10);
 
-    res.json({
-      success: true,
-      data: customers,
-    });
+    return ok(res, customers);
   } catch (error) {
     console.error("Error searching customers:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to search customers",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to search customers");
   }
 };
 

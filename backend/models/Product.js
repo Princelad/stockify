@@ -15,7 +15,6 @@ const productSchema = new mongoose.Schema(
       // stock keeping identifier
       type: String,
       required: true,
-      unique: true,
       trim: true,
     },
     category: {
@@ -127,6 +126,7 @@ productSchema.virtual("isOutOfStock").get(function () {
 });
 
 // Index for better search performance
+productSchema.index({ createdBy: 1, sku: 1 }, { unique: true });
 productSchema.index({ category: 1 });
 productSchema.index({ "supplier.name": 1 });
 productSchema.index({ createdAt: -1 });

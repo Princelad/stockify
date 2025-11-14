@@ -24,4 +24,7 @@ const customerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Per-tenant unique index on name
+customerSchema.index({ createdBy: 1, name: 1 }, { unique: true });
+
 module.exports = mongoose.model("Customer", customerSchema);

@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+// Theme toggle removed from layout
 import { Package, Plus, User } from "lucide-react";
 import { themeColors } from "@/contexts/ThemeContext";
 
@@ -75,8 +75,7 @@ export function AppNavbar({ currentPage, onAddProduct }: AppNavbarProps) {
                 </span>
               </div>
 
-              {/* Theme Toggle */}
-              <ThemeToggle variant="ghost" size="icon" />
+              {/* Theme Toggle removed */}
 
               {/* Logout Button */}
               <Button

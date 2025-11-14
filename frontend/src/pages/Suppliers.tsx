@@ -55,6 +55,9 @@ export default function Suppliers() {
   const [editingSupplier, setEditingSupplier] =
     useState<ExtendedSupplier | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof SupplierFormData, string>>
+  >({});
   const [formData, setFormData] = useState<SupplierFormData>({
     name: "",
     email: "",
@@ -76,14 +79,31 @@ export default function Suppliers() {
     "Beauty",
   ];
 
+  // Helper to normalize address into a display string. Backend may return a string or an object.
+  const formatAddress = (addr: any) => {
+    if (!addr) return "";
+    if (typeof addr === "string") return addr;
+    if (typeof addr === "object") {
+      if (addr.full && typeof addr.full === "string") return addr.full;
+      const parts = [];
+      if (addr.street) parts.push(addr.street);
+      if (addr.city) parts.push(addr.city);
+      if (addr.state) parts.push(addr.state);
+      if (addr.postalCode) parts.push(addr.postalCode);
+      if (addr.country) parts.push(addr.country);
+      return parts.join(", ");
+    }
+    return String(addr);
+  };
+
   // Fetch suppliers from API
   const fetchSuppliers = async () => {
     try {
       setLoading(true);
       const response = await apiService.getSuppliers();
 
-      if (response.success && response.data && "data" in response.data) {
-        setSuppliers(response.data.data as ExtendedSupplier[]); // API returns { data: { data: suppliers[], pagination: {} } }
+      if (response.success && response.data && "suppliers" in response.data) {
+        setSuppliers(response.data.suppliers as ExtendedSupplier[]); // API returns { data: { suppliers: [], pagination: {} } }
       } else {
         toast({
           title: "Error",
@@ -132,18 +152,23 @@ export default function Suppliers() {
       });
       return;
     }
+    toast({
+      title: "Export Started",
+      description: `Exporting suppliers as ${format.toUpperCase()}...`,
+      type: "info",
+    });
 
     const exportData = filteredSuppliers.map((supplier: ExtendedSupplier) => ({
       Name: supplier.name,
       "Contact Person": supplier.contactPerson || "",
       Email: supplier.email || "",
       Phone: supplier.phone || "",
-      Address: supplier.address || "",
+      Address: formatAddress(supplier.address),
       Category: supplier.category || "",
       "Payment Terms": supplier.paymentTerms || "",
       "Total Products": supplier.productCount || 0,
-      "Total Value": `$${(supplier.totalValue || 0).toFixed(2)}`,
-      Status: "Active", // Default status since not in ExtendedSupplier type
+      "Total Value": `₹${(supplier.totalValue || 0).toFixed(2)}`,
+      Status: supplier.status || "Active",
     }));
 
     const headers = [
@@ -160,24 +185,29 @@ export default function Suppliers() {
     ];
 
     try {
+      let result: any;
       if (format === "csv") {
-        exportToCSV({ filename: "suppliers", data: exportData, headers });
-        toast({
-          title: "Export Successful",
-          description: "Supplier data exported to Excel successfully",
-          type: "success",
-        });
-      } else {
-        exportToPDF({
-          filename: "suppliers-report",
+        result = exportToCSV({
+          filename: `suppliers-${new Date().toISOString().split("T")[0]}`,
           data: exportData,
           headers,
         });
+      } else {
+        result = await exportToPDF({
+          filename: `Suppliers Report - ${new Date().toLocaleDateString()}`,
+          data: exportData,
+          headers,
+        });
+      }
+
+      if (result && result.success) {
         toast({
-          title: "Export Successful",
-          description: "Supplier data exported to PDF successfully",
+          title: "Export Complete",
+          description: result.message || "Export finished successfully",
           type: "success",
         });
+      } else {
+        throw new Error(result?.error || "Export failed");
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -195,6 +225,48 @@ export default function Suppliers() {
     if (submitting) return;
 
     setSubmitting(true);
+
+    // Client-side validation to avoid server 400s (mirror backend rules)
+    const validateForm = (data: SupplierFormData) => {
+      const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+      const fieldErrors: Partial<Record<keyof SupplierFormData, string>> = {};
+
+      if (!data.name || data.name.trim().length === 0) {
+        fieldErrors.name = "Company name is required";
+      }
+
+      if (!data.contactPerson || data.contactPerson.trim().length === 0) {
+        fieldErrors.contactPerson = "Contact person is required";
+      } else if (data.contactPerson && data.contactPerson.length > 50) {
+        fieldErrors.contactPerson =
+          "Contact person name cannot exceed 50 characters";
+      }
+
+      if (!data.email || data.email.trim().length === 0) {
+        fieldErrors.email = "Email is required";
+      } else if (!emailRegex.test(data.email)) {
+        fieldErrors.email = "Please enter a valid email address";
+      }
+
+      if (data.phone && data.phone.length > 20) {
+        fieldErrors.phone = "Phone number cannot exceed 20 characters";
+      }
+
+      return {
+        valid: Object.keys(fieldErrors).length === 0,
+        errors: fieldErrors,
+      } as {
+        valid: boolean;
+        errors: Partial<Record<keyof SupplierFormData, string>>;
+      };
+    };
+
+    const validation = validateForm(formData);
+    if (!validation.valid) {
+      setErrors(validation.errors || {});
+      setSubmitting(false);
+      return;
+    }
 
     try {
       if (editingSupplier) {
@@ -233,6 +305,8 @@ export default function Suppliers() {
             description: "Supplier created successfully",
             type: "success",
           });
+          // clear any inline errors on success
+          setErrors({});
         } else {
           throw new Error(response.message || "Failed to create supplier");
         }
@@ -248,16 +322,36 @@ export default function Suppliers() {
         paymentTerms: "30 days",
         category: "Electronics",
       });
+      setErrors({});
       setIsAddDialogOpen(false);
       setEditingSupplier(null);
     } catch (error) {
       console.error("Error saving supplier:", error);
+
+      // Try to extract validation details if backend returned them in the error message
+      let description =
+        error instanceof Error
+          ? error.message
+          : "Failed to save supplier. Please try again.";
+
+      // If message contains a JSON payload after a dash, parse it and show nicer messages
+      const jsonMatch = description.match(/-\s*(\{.*\})$/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          if (parsed && parsed.errors && Array.isArray(parsed.errors)) {
+            description = parsed.errors.join("; ");
+          } else if (parsed && parsed.message) {
+            description = parsed.message;
+          }
+        } catch (e) {
+          // ignore JSON parse errors
+        }
+      }
+
       toast({
         title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to save supplier. Please try again.",
+        description,
         type: "error",
       });
     } finally {
@@ -271,7 +365,7 @@ export default function Suppliers() {
       name: supplier.name,
       email: supplier.email || "",
       phone: supplier.phone || "",
-      address: supplier.address || "",
+      address: formatAddress(supplier.address) || "",
       contactPerson: supplier.contactPerson || "",
       paymentTerms: supplier.paymentTerms || "30 days",
       category: supplier.category || "Electronics",
@@ -410,32 +504,47 @@ export default function Suppliers() {
                         <Input
                           id="name"
                           value={formData.name}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setFormData((prev) => ({
                               ...prev,
                               name: e.target.value,
-                            }))
-                          }
+                            }));
+                            setErrors((prev) => ({ ...prev, name: undefined }));
+                          }}
                           placeholder="Enter company name"
                           required
                           disabled={submitting}
                         />
+                        {errors.name && (
+                          <p className="text-sm text-red-600 mt-1">
+                            {errors.name}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="contactPerson">Contact Person *</Label>
                         <Input
                           id="contactPerson"
                           value={formData.contactPerson}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setFormData((prev) => ({
                               ...prev,
                               contactPerson: e.target.value,
-                            }))
-                          }
+                            }));
+                            setErrors((prev) => ({
+                              ...prev,
+                              contactPerson: undefined,
+                            }));
+                          }}
                           placeholder="Enter contact person name"
                           required
                           disabled={submitting}
                         />
+                        {errors.contactPerson && (
+                          <p className="text-sm text-red-600 mt-1">
+                            {errors.contactPerson}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="email">Email *</Label>
@@ -443,47 +552,74 @@ export default function Suppliers() {
                           id="email"
                           type="email"
                           value={formData.email}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setFormData((prev) => ({
                               ...prev,
                               email: e.target.value,
-                            }))
-                          }
+                            }));
+                            setErrors((prev) => ({
+                              ...prev,
+                              email: undefined,
+                            }));
+                          }}
                           placeholder="Enter email address"
                           required
                           disabled={submitting}
                         />
+                        {errors.email && (
+                          <p className="text-sm text-red-600 mt-1">
+                            {errors.email}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="phone">Phone *</Label>
                         <Input
                           id="phone"
                           value={formData.phone}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setFormData((prev) => ({
                               ...prev,
                               phone: e.target.value,
-                            }))
-                          }
+                            }));
+                            setErrors((prev) => ({
+                              ...prev,
+                              phone: undefined,
+                            }));
+                          }}
                           placeholder="Enter phone number"
                           required
                           disabled={submitting}
                         />
+                        {errors.phone && (
+                          <p className="text-sm text-red-600 mt-1">
+                            {errors.phone}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="address">Address</Label>
                         <Input
                           id="address"
                           value={formData.address}
-                          onChange={(e) =>
+                          onChange={(e) => {
                             setFormData((prev) => ({
                               ...prev,
                               address: e.target.value,
-                            }))
-                          }
+                            }));
+                            setErrors((prev) => ({
+                              ...prev,
+                              address: undefined,
+                            }));
+                          }}
                           placeholder="Enter address"
                           disabled={submitting}
                         />
+                        {errors.address && (
+                          <p className="text-sm text-red-600 mt-1">
+                            {errors.address}
+                          </p>
+                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -491,12 +627,16 @@ export default function Suppliers() {
                           <select
                             id="category"
                             value={formData.category}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setFormData((prev) => ({
                                 ...prev,
                                 category: e.target.value,
-                              }))
-                            }
+                              }));
+                              setErrors((prev) => ({
+                                ...prev,
+                                category: undefined,
+                              }));
+                            }}
                             className="w-full p-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={submitting}
                           >
@@ -512,12 +652,16 @@ export default function Suppliers() {
                           <select
                             id="paymentTerms"
                             value={formData.paymentTerms}
-                            onChange={(e) =>
+                            onChange={(e) => {
                               setFormData((prev) => ({
                                 ...prev,
                                 paymentTerms: e.target.value,
-                              }))
-                            }
+                              }));
+                              setErrors((prev) => ({
+                                ...prev,
+                                paymentTerms: undefined,
+                              }));
+                            }}
                             className="w-full p-2 border rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                             disabled={submitting}
                           >
@@ -719,7 +863,9 @@ export default function Suppliers() {
                         {supplier.address && (
                           <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
                             <MapPin className="h-4 w-4 flex-shrink-0" />
-                            <span className="truncate">{supplier.address}</span>
+                            <span className="truncate">
+                              {formatAddress(supplier.address)}
+                            </span>
                           </div>
                         )}
 

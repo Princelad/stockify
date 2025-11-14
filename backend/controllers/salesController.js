@@ -1,7 +1,9 @@
 const Sale = require("../models/Sale");
 const Product = require("../models/Product");
 const Customer = require("../models/Customer");
+const invoicePDFService = require("../services/invoicePDFService");
 const mongoose = require("mongoose");
+const { ok, fail } = require("../utils/responder");
 
 /**
  * Get all sales with pagination and filters
@@ -18,9 +20,13 @@ const getSales = async (req, res) => {
       endDate,
     } = req.query;
 
+<<<<<<< HEAD
     const filters = {
       createdBy: req.user._id, // Add user scoping
     };
+=======
+    const filters = { createdBy: req.user._id };
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
 
     if (customer) filters.customer = customer;
     if (paymentMethod) filters.paymentMethod = paymentMethod;
@@ -37,29 +43,63 @@ const getSales = async (req, res) => {
       .populate("items.product", "name sku")
       .sort({ createdAt: -1 })
       .limit(limit * 1)
-      .skip((page - 1) * limit);
+      .skip((page - 1) * limit)
+      .lean();
 
     const total = await Sale.countDocuments(filters);
 
-    res.json({
-      success: true,
-      data: {
-        sales,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(total / limit),
-          totalItems: total,
-          itemsPerPage: parseInt(limit),
-        },
+    return ok(res, {
+      sales,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalItems: total,
+        itemsPerPage: parseInt(limit),
       },
     });
   } catch (error) {
     console.error("Error fetching sales:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch sales",
-      error: error.message,
+    return fail(res, error, "Failed to fetch sales");
+  }
+};
+
+/**
+ * Generate invoice PDF for a sale
+ */
+const generateSalePDF = async (req, res) => {
+  try {
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id,
+    })
+      .populate("customer")
+      .populate("items.product")
+      .lean();
+
+    if (!sale) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Sale not found" });
+    }
+
+    const pdfBuffer = await invoicePDFService.generateInvoicePDF(sale, {
+      companyName: process.env.COMPANY_NAME || "Stockify",
+      companyAddress: process.env.COMPANY_ADDRESS || "",
+      footer: process.env.INVOICE_FOOTER || "Thank you for your business!",
     });
+
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Length": pdfBuffer.length,
+      "Content-Disposition": `attachment; filename="invoice-${
+        sale.invoiceNumber || sale._id
+      }.pdf"`,
+    });
+
+    return res.status(200).send(pdfBuffer);
+  } catch (error) {
+    console.error("Error generating invoice PDF:", error);
+    return fail(res, error, "Failed to generate invoice PDF");
   }
 };
 
@@ -70,10 +110,15 @@ const getSale = async (req, res) => {
   try {
     const sale = await Sale.findOne({
       _id: req.params.id,
+<<<<<<< HEAD
       createdBy: req.user._id
+=======
+      createdBy: req.user._id,
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
     })
       .populate("customer")
-      .populate("items.product");
+      .populate("items.product")
+      .lean();
 
     if (!sale) {
       return res.status(404).json({
@@ -82,17 +127,10 @@ const getSale = async (req, res) => {
       });
     }
 
-    res.json({
-      success: true,
-      data: sale,
-    });
+    return ok(res, sale);
   } catch (error) {
     console.error("Error fetching sale:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch sale",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch sale");
   }
 };
 
@@ -123,6 +161,7 @@ const createSale = async (req, res) => {
     // Validate customer if provided
     let customer = null;
     if (customerId) {
+<<<<<<< HEAD
       // First try to find customer with user scoping
       customer = await Customer.findOne({
         _id: customerId,
@@ -130,6 +169,13 @@ const createSale = async (req, res) => {
       }).session(session);
       
       // If not found with user scoping, try without (for backward compatibility)
+=======
+      // TODO: Enforce tenant scoping on customers once `createdBy` is added to Customer schema
+      customer = await Customer.findOne({
+        _id: customerId,
+        createdBy: req.user._id,
+      }).session(session);
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
       if (!customer) {
         customer = await Customer.findById(customerId).session(session);
         
@@ -157,7 +203,10 @@ const createSale = async (req, res) => {
       const product = await Product.findOne({
         _id: item.productId,
         createdBy: req.user._id,
+<<<<<<< HEAD
         isActive: true
+=======
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
       }).session(session);
       if (!product) {
         await session.abortTransaction();
@@ -194,7 +243,7 @@ const createSale = async (req, res) => {
       // Prepare stock update
       stockUpdates.push({
         updateOne: {
-          filter: { _id: product._id },
+          filter: { _id: product._id, createdBy: req.user._id },
           update: {
             $inc: {
               currentStock: -item.quantity,
@@ -212,7 +261,11 @@ const createSale = async (req, res) => {
       discountPercentage,
       paymentMethod,
       paymentStatus,
+<<<<<<< HEAD
       createdBy: req.user._id, // Add the required createdBy field
+=======
+      createdBy: req.user._id,
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
     };
 
     // Only add customer if valid customerId exists after validation
@@ -259,11 +312,7 @@ const createSale = async (req, res) => {
   } catch (error) {
     await session.abortTransaction();
     console.error("Error creating sale:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create sale",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to create sale");
   } finally {
     session.endSession();
   }
@@ -280,7 +329,11 @@ const updateSalePayment = async (req, res) => {
     const { paymentStatus } = req.body;
     const sale = await Sale.findOne({
       _id: req.params.id,
+<<<<<<< HEAD
       createdBy: req.user._id
+=======
+      createdBy: req.user._id,
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
     }).session(session);
 
     if (!sale) {
@@ -296,7 +349,10 @@ const updateSalePayment = async (req, res) => {
 
     // Update customer due amount if customer exists and payment status changed
     if (sale.customer) {
-      const customer = await Customer.findById(sale.customer).session(session);
+      const customer = await Customer.findOne({
+        _id: sale.customer,
+        createdBy: req.user._id,
+      }).session(session);
       if (customer) {
         // If changing from pending/partial to paid, reduce due amount
         if (
@@ -319,19 +375,11 @@ const updateSalePayment = async (req, res) => {
 
     await session.commitTransaction();
 
-    res.json({
-      success: true,
-      message: "Payment status updated successfully",
-      data: sale,
-    });
+    return ok(res, sale, "Payment status updated successfully");
   } catch (error) {
     await session.abortTransaction();
     console.error("Error updating payment status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update payment status",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to update payment status");
   } finally {
     session.endSession();
   }
@@ -347,7 +395,11 @@ const deleteSale = async (req, res) => {
   try {
     const sale = await Sale.findOne({
       _id: req.params.id,
+<<<<<<< HEAD
       createdBy: req.user._id
+=======
+      createdBy: req.user._id,
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
     }).session(session);
 
     if (!sale) {
@@ -362,7 +414,7 @@ const deleteSale = async (req, res) => {
     for (const item of sale.items) {
       stockUpdates.push({
         updateOne: {
-          filter: { _id: item.product },
+          filter: { _id: item.product, createdBy: req.user._id },
           update: {
             $inc: {
               currentStock: item.quantity,
@@ -379,7 +431,10 @@ const deleteSale = async (req, res) => {
 
     // Update customer if exists
     if (sale.customer) {
-      const customer = await Customer.findById(sale.customer).session(session);
+      const customer = await Customer.findOne({
+        _id: sale.customer,
+        createdBy: req.user._id,
+      }).session(session);
       if (customer) {
         // Remove from purchase history
         customer.purchaseHistory = customer.purchaseHistory.filter(
@@ -401,18 +456,11 @@ const deleteSale = async (req, res) => {
     await Sale.findByIdAndDelete(req.params.id, { session });
     await session.commitTransaction();
 
-    res.json({
-      success: true,
-      message: "Sale deleted successfully",
-    });
+    return ok(res, null, "Sale deleted successfully");
   } catch (error) {
     await session.abortTransaction();
     console.error("Error deleting sale:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete sale",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to delete sale");
   } finally {
     session.endSession();
   }
@@ -433,6 +481,7 @@ const getSalesStats = async (req, res) => {
     };
 
     const [totalSales, totalRevenue, recentSales] = await Promise.all([
+<<<<<<< HEAD
       Sale.countDocuments(baseFilter),
       Sale.aggregate([
         { 
@@ -444,34 +493,46 @@ const getSalesStats = async (req, res) => {
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]),
       Sale.find(baseFilter)
+=======
+      Sale.countDocuments({
+        createdBy: req.user._id,
+        createdAt: { $gte: startDate },
+      }),
+      Sale.aggregate([
+        {
+          $match: {
+            createdBy: req.user._id,
+            createdAt: { $gte: startDate },
+            paymentStatus: "paid",
+          },
+        },
+        { $group: { _id: null, total: { $sum: "$totalAmount" } } },
+      ]),
+      Sale.find({ createdBy: req.user._id, createdAt: { $gte: startDate } })
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
         .populate("customer", "name")
         .sort({ createdAt: -1 })
-        .limit(5),
+        .limit(5)
+        .lean(),
     ]);
 
     const revenue = totalRevenue.length > 0 ? totalRevenue[0].total : 0;
 
-    res.json({
-      success: true,
-      data: {
-        totalSales,
-        totalRevenue: revenue,
-        recentSales,
-        period: parseInt(period),
-      },
+    return ok(res, {
+      totalSales,
+      totalRevenue: revenue,
+      recentSales,
+      period: parseInt(period),
     });
   } catch (error) {
     console.error("Error fetching sales stats:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch sales statistics",
-      error: error.message,
-    });
+    return fail(res, error, "Failed to fetch sales statistics");
   }
 };
 
 module.exports = {
   getSales,
+  generateSalePDF,
   getSale,
   createSale,
   updateSalePayment,

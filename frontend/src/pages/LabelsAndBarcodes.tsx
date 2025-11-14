@@ -804,8 +804,11 @@ export default function LabelsAndBarcodes() {
       const printWindow = window.open("", "_blank");
 
       if (printWindow) {
+        // Write the PDF embed into the new window. Don't revoke the object URL immediately —
+        // some browsers may cancel loading if the URL is revoked too soon. Revoke after a delay.
         printWindow.document.write(`
           <html>
+<<<<<<< HEAD
             <head>
               <title>Print Labels - ${selectedTemplate}</title>
               <style>
@@ -815,10 +818,16 @@ export default function LabelsAndBarcodes() {
             </head>
             <body>
               <embed src="${url}" width="100%" height="100%" type="application/pdf">
+=======
+            <head><title>Print Labels</title></head>
+            <body style="margin:0">
+              <embed id="labelPdf" src="${url}" width="100%" height="100%" type="application/pdf">
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
             </body>
           </html>
         `);
         printWindow.document.close();
+<<<<<<< HEAD
         
         // Add print button to the window
         setTimeout(() => {
@@ -827,6 +836,26 @@ export default function LabelsAndBarcodes() {
             printWindow.print();
           }
         }, 1000);
+=======
+
+        try {
+          // Focus and (optionally) open print dialog once the PDF loads
+          printWindow.focus();
+          // Attempt to print after a short delay to allow embed to load
+          setTimeout(() => {
+            try {
+              printWindow.print?.();
+            } catch (e) {
+              // ignore print errors (popup blockers)
+            }
+          }, 500);
+        } catch (e) {
+          // ignore
+        }
+
+        // Revoke object URL after delay to ensure the PDF has time to load in the new window
+        setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
       } else {
         // Fallback: download the PDF
         const a = document.createElement("a");
@@ -835,6 +864,7 @@ export default function LabelsAndBarcodes() {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+<<<<<<< HEAD
         
         showNotification(
           "info",
@@ -848,6 +878,12 @@ export default function LabelsAndBarcodes() {
         URL.revokeObjectURL(url);
       }, 10000);
 
+=======
+
+        // Revoke soon after download initiated
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }
+>>>>>>> 188d7edda56e9426cbca7998bd0d4d6de0fd0747
       showNotification(
         "success",
         "Labels Generated",

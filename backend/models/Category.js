@@ -6,7 +6,6 @@ const categorySchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      unique: true,
     },
     description: {
       type: String,
@@ -31,8 +30,9 @@ const categorySchema = new mongoose.Schema(
   }
 );
 
-// Index for better search performance
+// Indexes for performance and per-tenant uniqueness
 categorySchema.index({ createdBy: 1 });
 categorySchema.index({ isActive: 1 });
+categorySchema.index({ createdBy: 1, name: 1 }, { unique: true });
 
 module.exports = mongoose.model("Category", categorySchema);
