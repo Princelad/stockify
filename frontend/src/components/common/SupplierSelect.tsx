@@ -72,16 +72,8 @@ export default function SupplierSelect({
     try {
       setLoading(true);
       const response = await apiService.getSuppliers();
-      if (response.success && response.data) {
-        // api.getSuppliers returns { suppliers, pagination }
-        // Be defensive: prefer response.data.suppliers when present
-        if ((response.data as any).suppliers) {
-          setSuppliers((response.data as any).suppliers || []);
-        } else if (Array.isArray(response.data)) {
-          setSuppliers(response.data as Supplier[]);
-        } else {
-          setSuppliers([]);
-        }
+      if (response.success && response.data && "data" in response) {
+        setSuppliers(response.data.data || []);
       }
     } catch (error) {
       console.error("Error fetching suppliers:", error);
@@ -98,15 +90,19 @@ export default function SupplierSelect({
   const fetchCategories = async () => {
     try {
       const response = await apiService.getCategories();
-      if (response.success && response.data) {
-        const cats = (response.data as any).categories || [];
-        setCategories(cats);
-
+      if (response.success && response.data && "data" in response) {
+        setCategories(response.data.categories || []);
         // Set default category if none selected and categories are available
-        if (!createFormData.category && cats && cats.length > 0) {
+        if (
+          !createFormData.category &&
+          response.data.categories &&
+          response.data.categories.length > 0
+        ) {
           setCreateFormData((prev) => ({
             ...prev,
-            category: cats[0].name || cats[0]._id,
+            category:
+              response.data.categories[0].name ||
+              response.data.categories[0]._id,
           }));
         }
       }
@@ -130,14 +126,6 @@ export default function SupplierSelect({
     fetchSuppliers();
     fetchCategories();
   }, []);
-
-  // Refresh categories whenever the create-dialog is opened so newly created
-  // categories (from other parts of the app) become available in the select.
-  useEffect(() => {
-    if (isCreateDialogOpen) {
-      fetchCategories();
-    }
-  }, [isCreateDialogOpen]);
 
   const handleCreateSupplier = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,242 +1,377 @@
-# 📦 Stockify
+# 📦 Stockify# 📦 Stockify
 
-<div align="center">
 
-![GitHub repo](https://img.shields.io/github/stars/Princelad/stockify?style=social&label=Star)
-![MIT License](https://img.shields.io/badge/license-MIT-green)
-![GitHub issues](https://img.shields.io/github/issues/Princelad/stockify)
-![GitHub forks](https://img.shields.io/github/forks/Princelad/stockify)
-![GitHub release](https://img.shields.io/github/v/release/Princelad/stockify)
 
-- 🐛 **Bug Reports:** Found a bug? [Create an issue](https://github.com/Princelad/stockify/issues/new?template=bug_report.md)
-- ✨ **Feature Requests:** Have an idea? [Suggest a feature](https://github.com/Princelad/stockify/issues/new?template=feature_request.md)
+**Professional stock management and billing solution for small-medium businesses****Professional stock management and billing solution for small-medium businesses**
 
-**An open-source stock management and billing solution for small and medium-sized businesses**
 
-_Streamline your business operations with essential inventory tracking, billing, and customer management features_
 
-[🚀 Quick Start](#-quick-start) • [🎯 Project Scope](#-project-scope) • [✨ Features](#️-features) • [🛣️ Roadmap](#️-roadmap) • [🤝 Contributing](#-contributing)
+[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)[![MIT License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-</div>
+[![GitHub Stars](https://img.shields.io/github/stars/Princelad/stockify?style=social)](https://github.com/Princelad/stockify)[![GitHub Stars](https://img.shields.io/github/stars/Princelad/stockify?style=social)](https://github.com/Princelad/stockify)
 
----
 
-## 🎯 Project Scope
 
-Stockify is designed as a **minimal but comprehensive** open-source solution for stock management and billing, specifically tailored for small and medium-sized businesses. While the system includes multiple feature types, it focuses on essential functionality rather than being a fully-fledged enterprise system.
+> Streamline inventory tracking, billing, and customer management with a modern, full-stack solution> Streamline inventory tracking, billing, and customer management with a modern, full-stack solution
 
-### Core Purpose
+
+
+------
+
+
+
+## 🚀 Quick Start## 🎯 Project Scope
+
+
+
+### PrerequisitesStockify is designed as a **minimal but comprehensive** open-source solution for stock management and billing, specifically tailored for small and medium-sized businesses. While the system includes multiple feature types, it focuses on essential functionality rather than being a fully-fledged enterprise system.
+
+- Node.js 18+
+
+- MongoDB 4.4+### Core Purpose
+
+- npm or yarn
 
 Help shopkeepers and business owners efficiently manage their inventory and streamline billing processes by:
 
+### Installation
+
 - **Stock Management:** Track product details and monitor goods coming in and out of shops
-- **Integrated Billing:** Generate customer bills that automatically update stock levels
-- **Business Insights:** Display trends and growth patterns to support business decisions
-- **Customer Relations:** Manage customer purchase history and payment tracking
+
+```bash- **Integrated Billing:** Generate customer bills that automatically update stock levels
+
+# Clone repository- **Business Insights:** Display trends and growth patterns to support business decisions
+
+git clone https://github.com/Princelad/stockify.git- **Customer Relations:** Manage customer purchase history and payment tracking
+
+cd stockify
 
 ### Key Capabilities
 
-- **Multi-tier Pricing:** Support both retail customers and wholesale dealers with different pricing structures
+# Install dependencies
+
+npm run install:all- **Multi-tier Pricing:** Support both retail customers and wholesale dealers with different pricing structures
+
 - **Payment Flexibility:** Accept multiple payment methods (UPI, Cash, Card, etc.)
-- **Credit Management:** Track customer payment histories and set purchase permissions based on payment behavior
-- **Catalog Management:** Bulk import product catalogs and easily update stock during deliveries
-- **Order Management:** Reduce manual bookkeeping with digital order tracking
+
+# Configure environment- **Credit Management:** Track customer payment histories and set purchase permissions based on payment behavior
+
+cp backend/.env.example backend/.env- **Catalog Management:** Bulk import product catalogs and easily update stock during deliveries
+
+# Edit backend/.env with your MongoDB URI and secrets- **Order Management:** Reduce manual bookkeeping with digital order tracking
+
 - **Multi-supplier Support:** Track same products from different suppliers while maintaining unified inventory
 
----
+# Start development servers
+
+npm run start:dev---
+
+```
 
 ## 🚀 Quick Start
 
+### Environment Setup
+
 ### Prerequisites
 
-- **Node.js 16+** with npm package manager
-- **MongoDB 4.4+** (MongoDB Atlas recommended for cloud deployment)
-- **Git** for version control
+Create `backend/.env`:
 
-### Installation & Setup
+```env- **Node.js 16+** with npm package manager
+
+MONGO_URI=your-mongodb-connection-string- **MongoDB 4.4+** (MongoDB Atlas recommended for cloud deployment)
+
+JWT_SECRET=your-jwt-secret- **Git** for version control
+
+SESSION_SECRET=your-session-secret
+
+FRONTEND_URL=http://localhost:5173### Installation & Setup
+
+```
 
 ```bash
-# Clone the repository
-git clone https://github.com/Princelad/stockify.git
-cd stockify
 
-# Install all dependencies (root, backend, and frontend)
+### Access# Clone the repository
+
+- **Frontend:** http://localhost:5173git clone https://github.com/Princelad/stockify.git
+
+- **Backend API:** http://localhost:5000cd stockify
+
+
+
+---# Install all dependencies (root, backend, and frontend)
+
 npm run install:all
-
-# Set up environment variables
-cp backend/.env.example backend/.env
-# Edit backend/.env with your MongoDB URI, JWT secrets, and API keys
-
-# Seed the database with sample data (optional)
-cd backend && npm run seed
-
-# Start both servers in development mode
-npm run start:dev
-```
-
-### Environment Configuration
-
-Create `backend/.env` with the following variables:
-
-```env
-# Database Configuration
-MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/stockify
-DB_NAME=stockify
-
-# Authentication Secrets
-JWT_SECRET=your-super-secret-jwt-key
-SESSION_SECRET=your-session-secret-key
-
-# Google OAuth2 (Optional - for social login)
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-
-# Server Configuration
-NODE_ENV=development
-PORT=5000
-FRONTEND_URL=http://localhost:5173
-```
-
-### Quick Development Setup
-
-```bash
-# Using the provided scripts for different platforms
-
-# Windows PowerShell
-./start-dev.ps1
-
-# Windows Command Prompt
-./start-dev.bat
-
-# Manual startup (cross-platform)
-# Terminal 1 - Backend API Server
-cd backend && npm start
-
-# Terminal 2 - Frontend React App
-cd frontend && npm run dev
-```
-
-### Access Your Application
-
-- **Frontend Application:** http://localhost:5173
-- **Backend API:** http://localhost:5000
-- **API Documentation:** http://localhost:5000/api/products/test/routes
-
-### Default Admin Account
-
-```
-Email: admin@stockify.com
-Password: admin123
-```
-
-> ⚠️ **Security Note:** Change default credentials immediately after first login!
-
----
-
-## 🎯 **Current Implementation Status**
-
-### ✅ **Fully Operational Features**
-
-**Core Business Systems:**
-
-- ✅ Complete user authentication with JWT and Google OAuth2
-- ✅ Product inventory management with advanced CRUD operations
-- ✅ Real-time sales and billing system with automatic stock updates
-- ✅ Customer relationship management with purchase history
-- ✅ Supplier management and procurement tracking
-- ✅ Category organization and product classification
-- ✅ Business dashboard with live analytics and metrics
-
-**Advanced Features:**
-
-- ✅ Label printing system with customizable templates
-- ✅ Barcode generation for product identification
-- ✅ PDF import with OCR text extraction for bulk product import
-- ✅ Comprehensive reporting suite (Sales, Inventory, Tax/GST)
-- ✅ Multi-tier pricing support (retail/wholesale)
-- ✅ Multi-supplier product tracking and comparison
-- ✅ Real-time search with debounced input across all modules
-
-**Technical Infrastructure:**
-
-- ✅ RESTful API with 50+ endpoints fully documented
-- ✅ Type-safe frontend with comprehensive TypeScript implementation
-- ✅ Multi-tenant data isolation for secure business operations
-- ✅ Responsive design optimized for desktop and mobile devices
-- ✅ Error handling and validation at all application layers
-
-### 🎮 **Live API Endpoints**
-
-The backend provides a comprehensive set of REST API endpoints:
-
-- **Authentication:** `/api/auth/*` - Login, registration, Google OAuth2
-- **Products:** `/api/products/*` - Complete inventory management with 20+ endpoints
-- **Sales:** `/api/sales/*` - Billing system and transaction management
-- **Customers:** `/api/customers/*` - CRM functionality with analytics
-- **Suppliers:** `/api/suppliers/*` - Supplier relationship management
-- **Categories:** `/api/categories/*` - Product categorization system
-- **Labels:** `/api/labels/*` - Label printing and barcode generation
-- **Reports:** `/api/reports/*` - Business intelligence and analytics
-- **Users:** `/api/users/*` - User profile and account management
-
-> 📖 **API Documentation:** Visit `http://localhost:5000/api/products/test/routes` for complete endpoint documentation
-
----
-
----
 
 ## ✨ Features
 
-### 🏪 **Business Management Core**
+# Set up environment variables
 
-- **📦 Complete Inventory System**
+### Core Functionalitycp backend/.env.example backend/.env
 
-  - Product catalog with SKU, barcode, and image support
-  - Multi-supplier product tracking and comparison
-  - Real-time stock level monitoring and alerts
-  - Bulk product import with PDF OCR processing
-  - Category management with color-coded organization
-  - Advanced product search and filtering
+- 📦 **Inventory Management** - Product tracking, categories, stock alerts# Edit backend/.env with your MongoDB URI, JWT secrets, and API keys
 
-- **💳 Integrated Billing & Sales**
+- 💳 **Billing System** - POS, invoicing, multi-payment support
 
-  - Point-of-sale system with real-time stock deduction
-  - Multi-tier pricing (retail/wholesale) support
-  - Multiple payment methods (Cash, UPI, Card, Bank Transfer)
-  - Automatic invoice generation and printing
-  - Customer purchase history and transaction tracking
-  - Payment status tracking and partial payment support
+- 👥 **Customer Management** - Profiles, purchase history, analytics# Seed the database with sample data (optional)
 
-- **👥 Customer Relationship Management**
+- 🏢 **Supplier Management** - Procurement tracking, multi-supplier supportcd backend && npm run seed
 
-  - Comprehensive customer profiles and contact management
-  - Purchase history tracking and analytics
+- 📊 **Analytics & Reports** - Sales, inventory, tax reports
+
+- 🏷️ **Labels & Barcodes** - Product labeling, barcode generation# Start both servers in development mode
+
+- 🔐 **Authentication** - JWT, Google OAuth2npm run start:dev
+
+- 🌓 **Dark Mode** - Professional theme with smooth transitions```
+
+
+
+### Technical Features### Environment Configuration
+
+- Multi-tier pricing (retail/wholesale)
+
+- Real-time stock updatesCreate `backend/.env` with the following variables:
+
+- PDF import with OCR
+
+- Responsive design```env
+
+- Type-safe TypeScript# Database Configuration
+
+- RESTful APIMONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/stockify
+
+DB_NAME=stockify
+
+---
+
+# Authentication Secrets
+
+## 🧰 Tech StackJWT_SECRET=your-super-secret-jwt-key
+
+SESSION_SECRET=your-session-secret-key
+
+**Backend:** Node.js, Express, MongoDB, JWT, Passport.js  
+
+**Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui  # Google OAuth2 (Optional - for social login)
+
+**Features:** Recharts, PDF generation, OCR, Barcode generationGOOGLE_CLIENT_ID=your-google-client-id
+
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+---
+
+# Server Configuration
+
+## 📁 Project StructureNODE_ENV=development
+
+PORT=5000
+
+```FRONTEND_URL=http://localhost:5173
+
+stockify/```
+
+├── backend/              # Express API
+
+│   ├── controllers/      # Business logic### Quick Development Setup
+
+│   ├── models/          # MongoDB schemas
+
+│   ├── routes/          # API endpoints```bash
+
+│   ├── middleware/      # Auth, validation# Using the provided scripts for different platforms
+
+│   ├── services/        # PDF, OCR processing
+
+│   └── utils/           # Helpers# Windows PowerShell
+
+├── frontend/            # React app./start-dev.ps1
+
+│   └── src/
+
+│       ├── components/  # UI components# Windows Command Prompt
+
+│       ├── pages/       # Route pages./start-dev.bat
+
+│       ├── contexts/    # State management
+
+│       ├── lib/         # Utilities, API# Manual startup (cross-platform)
+
+│       └── layouts/     # Page layouts# Terminal 1 - Backend API Server
+
+└── start-dev.ps1       # Dev startup script## 🚀 Quick Start
+
+```
+
+### Prerequisites
+
+---- Node.js 18+
+
+- MongoDB 4.4+
+
+## 🎯 Key Features- npm or yarn
+
+
+
+### Inventory Management### Installation
+
+- Product catalog with SKU, barcode support
+
+- Multi-supplier tracking```bash
+
+- Real-time stock monitoring & alerts# Clone repository
+
+- Category organizationgit clone https://github.com/Princelad/stockify.git
+
+- Bulk import via PDF/OCRcd stockify
+
+
+
+### Billing & Sales# Install dependencies
+
+- Point-of-sale systemnpm run install:all
+
+- Automatic stock deduction
+
+- Multi-payment methods (Cash, UPI, Card)# Configure environment
+
+- Invoice generationcp backend/.env.example backend/.env
+
+- Retail/wholesale pricing# Edit backend/.env with your MongoDB URI and secrets
+
+
+
+### Customer & Supplier Management# Start development servers
+
+- Customer profiles & purchase historynpm run start:dev
+
+- Payment tracking```
+
+- Supplier relationships
+
+- Contact management### Environment Setup
+
+
+
+### Analytics & ReportingCreate `backend/.env`:
+
+- Sales reports```env
+
+- Inventory reportsMONGO_URI=your-mongodb-connection-string
+
+- Tax/GST reportsJWT_SECRET=your-jwt-secret
+
+- Business dashboardSESSION_SECRET=your-session-secret
+
+- Visual charts & metricsFRONTEND_URL=http://localhost:5173
+
+```
+
+---
+
+### Access
+
+## 🛠️ Development- **Frontend:** http://localhost:5173
+
+- **Backend:** http://localhost:5000
+
+### Available Scripts
+
+---
+
+```bash
+
+# Install all dependencies## ✨ Features
+
+npm run install:all
+
+### Core Functionality
+
+# Start development (both servers)- 📦 **Inventory Management** - Product tracking, categories, stock alerts
+
+npm run start:dev- 💳 **Billing System** - POS, invoicing, multi-payment support
+
+- 👥 **Customer Management** - Profiles, purchase history, analytics
+
+# Backend only- � **Supplier Management** - Procurement tracking, multi-supplier support
+
+cd backend && npm start- 📊 **Analytics & Reports** - Sales, inventory, tax reports
+
+- 🏷️ **Labels & Barcodes** - Product labeling, barcode generation
+
+# Frontend only- 🔐 **Authentication** - JWT, Google OAuth2
+
+cd frontend && npm run dev
+
+### Technical Features
+
+# Build for production- Multi-tier pricing (retail/wholesale)
+
+cd frontend && npm run build- Real-time stock updates
+
+```- PDF import with OCR
+
+- Responsive design
+
+### API Documentation- Dark mode support
+
+Visit `http://localhost:5000/api/products/test/routes` for endpoint documentation.- RESTful API
+
+
+
+------
+
   - Retail vs. wholesale customer classification
-  - Customer search and quick billing integration
+
+## 🤝 Contributing  - Customer search and quick billing integration
+
   - Payment behavior tracking and credit management
 
+Contributions are welcome! Please feel free to submit a Pull Request.
+
 - **🏭 Supplier Management**
-  - Supplier contact and category management
-  - Product sourcing and procurement tracking
-  - Supplier performance analytics
-  - Multi-supplier price comparison
-  - Purchase order management integration
 
-### 📊 **Business Intelligence & Analytics**
+1. Fork the project  - Supplier contact and category management
 
-- **📈 Real-time Dashboard**
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)  - Product sourcing and procurement tracking
 
-  - Business performance metrics and KPIs
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)  - Supplier performance analytics
+
+4. Push to the branch (`git push origin feature/AmazingFeature`)  - Multi-supplier price comparison
+
+5. Open a Pull Request  - Purchase order management integration
+
+
+
+---### 📊 **Business Intelligence & Analytics**
+
+
+
+## 📄 License- **📈 Real-time Dashboard**
+
+
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.  - Business performance metrics and KPIs
+
   - Sales trends and revenue analytics
-  - Inventory status and stock alerts
+
+---  - Inventory status and stock alerts
+
   - Recent activity feed and notifications
-  - Top-selling products and customer insights
 
-- **📋 Comprehensive Reporting**
+## 🙏 Acknowledgments  - Top-selling products and customer insights
 
-  - Sales reports with date range filtering
+
+
+Built with React, Node.js, MongoDB, and modern web technologies.- **📋 Comprehensive Reporting**
+
+
+
+---  - Sales reports with date range filtering
+
   - Inventory reports with stock valuation
-  - Tax/GST compliance reports
+
+**Made with ❤️ for small and medium businesses**  - Tax/GST compliance reports
+
   - Customer analytics and behavior reports
   - Profit/loss statements and financial summaries
   - Export capabilities for external analysis
@@ -250,106 +385,36 @@ The backend provides a comprehensive set of REST API endpoints:
 
 ### 🔐 **Security & User Management**
 
-- **Authentication & Authorization**
-
-  - JWT-based secure authentication system
-  - Google OAuth2 social login integration
-  - Role-based access control (Admin, Manager, Staff)
-  - Session management and security features
-  - Password encryption and secure data handling
-
-- **📱 Modern User Experience**
-  - Responsive design optimized for desktop and mobile
-  - Intuitive navigation with collapsible sidebar
-  - Real-time search with debounced input handling
-  - Modern UI components with Tailwind CSS and shadcn/ui
-  - Smooth animations and loading states
-  - Comprehensive form validation and error handling
-
----
-
 ## 🧰 Tech Stack
 
-### Backend Technologies
-
-- **Runtime:** Node.js 18+ with Express.js framework
-- **Database:** MongoDB Atlas with Mongoose ODM for data modeling
-- **Authentication:** JWT tokens with Google OAuth2 and bcrypt password hashing
-- **Validation:** Joi schema validation for API requests and data integrity
-- **File Processing:** Multer for file uploads, Tesseract.js for OCR functionality
-- **PDF Generation:** jsPDF for invoice and label generation
-- **Security:** CORS protection, input sanitization, and secure session management
-- **API Documentation:** Comprehensive route documentation and error handling
-
-### Frontend Technologies
-
-- **Framework:** React 19 with TypeScript for type-safe development
-- **Build Tool:** Vite for fast development and optimized builds
-- **Styling:** Tailwind CSS 4.1+ with custom design system
-- **UI Components:** shadcn/ui with Radix primitives for accessible components
-- **Charts & Analytics:** Recharts for data visualization and business analytics
-- **State Management:** React Context API with custom hooks
-- **Form Handling:** React Hook Form with Zod validation schemas
-- **Icons:** Lucide React for consistent iconography
-- **Routing:** React Router v6 with protected routes and navigation guards
-
-### Development & DevOps
-
-- **Version Control:** Git with conventional commit messages
-- **Package Management:** npm with lockfile for consistent dependencies
-- **Code Quality:** ESLint and Prettier for code formatting and quality
-- **Development Workflow:** Hot reload, concurrent development servers
-- **Environment Management:** dotenv for configuration management
-- **Database Scripts:** Seeding, migration, and utility scripts
-- **Documentation:** Comprehensive README files and inline code documentation
-
-### Production Features
-
-- **Multi-tenant Architecture:** User-scoped data isolation
-- **Responsive Design:** Mobile-first approach with breakpoint optimization
-- **Performance:** Code splitting, lazy loading, and optimized bundle sizes
-- **SEO Optimization:** Meta tags, semantic HTML, and performance metrics
-- **Error Handling:** Comprehensive error boundaries and user feedback
-- **Accessibility:** WCAG compliance and keyboard navigation support
-
-### Utilities & Integrations
-
-- **QR Codes:** react-qr-code and qrcode libraries
-- **PDF Generation:** PDFKit for server-side PDF creation
-- **Date Handling:** Day.js for date manipulation
-- **HTTP Client:** Axios for API communication
-- **Development:** Nodemon, Concurrently for dev workflow
-
-### DevOps & Deployment
-
-- **Containerization:** Docker and Docker Compose
-- **Process Management:** PM2 for production
-- **Environment:** dotenv for configuration
-- **CORS:** cors middleware for cross-origin requests
+**Backend:** Node.js, Express, MongoDB, JWT, Passport.js  
+**Frontend:** React 19, TypeScript, Vite, Tailwind CSS, shadcn/ui  
+**Features:** Recharts, PDF generation, OCR, Barcode generation
 
 ---
 
-## 📁 Project Architecture
+## 📁 Project Structure
 
-```text
+```
 stockify/
-├── backend/                     # Node.js Express API Server
-│   ├── controllers/            # Business logic and API handlers
-│   │   ├── authController.js   # Authentication & user management
-│   │   ├── productController.js # Product CRUD & inventory operations
-│   │   ├── salesController.js  # Billing system & sales tracking
-│   │   ├── customerController.js # Customer relationship management
-│   │   ├── supplierController.js # Supplier management & procurement
-│   │   ├── categoryController.js # Product categorization
-│   │   ├── labelController.js  # Label printing & barcode generation
-│   │   └── reportController.js # Business analytics & reporting
-│   ├── models/                 # MongoDB schemas with Mongoose
-│   │   ├── User.js            # User authentication & roles
-│   │   ├── Product.js         # Product catalog & inventory
-│   │   ├── Sale.js            # Sales transactions & billing
-│   │   ├── Customer.js        # Customer profiles & purchase history
-│   │   ├── Supplier.js        # Supplier information & relationships
-│   │   ├── Category.js        # Product categorization system
+├── backend/              # Express API
+│   ├── controllers/      # Business logic
+│   ├── models/          # MongoDB schemas
+│   ├── routes/          # API endpoints
+│   ├── middleware/      # Auth, validation
+│   ├── services/        # PDF, OCR processing
+│   └── utils/           # Helpers
+├── frontend/            # React app
+│   └── src/
+│       ├── components/  # UI components
+│       ├── pages/       # Route pages
+│       ├── contexts/    # State management
+│       ├── lib/         # Utilities, API
+│       └── layouts/     # Page layouts
+└── start-dev.ps1       # Dev startup script
+```
+
+---
 │   │   └── LabelTemplate.js   # Label printing templates
 │   ├── routes/                # API endpoint definitions
 │   │   ├── auth.js           # Authentication routes

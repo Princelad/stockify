@@ -37,7 +37,6 @@ import {
 } from "recharts";
 import { apiService } from "@/lib/api";
 import { useToast } from "@/hooks/useToast";
-import { formatCurrency } from "@/lib/utils/format";
 
 interface InventoryItem {
   id: string;
@@ -228,7 +227,7 @@ export default function InventoryReport() {
     }
   };
 
-  // use centralized formatter (INR)
+  const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`;
 
   const getStockStatus = (item: InventoryItem) => {
     if (item.currentStock === 0)
@@ -464,7 +463,7 @@ export default function InventoryReport() {
                         cy="50%"
                         labelLine={false}
                         label={(entry: any) =>
-                          `${entry.name}: ${formatCurrency(entry.value)}`
+                          `${entry.name}: ₹${entry.value.toLocaleString()}`
                         }
                         outerRadius={80}
                         fill="#8884d8"

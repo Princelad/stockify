@@ -23,9 +23,12 @@ import {
   Receipt,
   Zap,
   Truck,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getCurrentUser, clearAuthData } from "@/lib/api";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface NavItem {
   label: string;
@@ -76,6 +79,7 @@ const navItems: NavItem[] = [
     children: [
       { label: "Sales Report", route: "/reports/sales" },
       { label: "Inventory Report", route: "/reports/inventory" },
+      { label: "Tax Report", route: "/reports/tax" },
     ],
   },
   { label: "Labels & Barcodes", icon: Tag, route: "/labels-barcodes" },
@@ -308,11 +312,11 @@ const Sidebar: React.FC<{
 
       {/* Quick Actions Section */}
       {shouldShowExpandedContent && (
-        <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="mt-6 pt-6 border-t border-border">
           {shouldShowText && (
             <div className="flex items-center gap-2 px-3 mb-4">
-              <Zap className="h-4 w-4 text-gray-500 flex-shrink-0" />
-              <span className="text-sm font-semibold text-gray-700 whitespace-nowrap overflow-hidden text-ellipsis">
+              <Zap className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              <span className="text-sm font-semibold text-foreground whitespace-nowrap overflow-hidden text-ellipsis">
                 Quick Actions
               </span>
             </div>
@@ -323,7 +327,7 @@ const Sidebar: React.FC<{
                 key={action.label}
                 onClick={() => handleNavigation(action.route)}
                 className={cn(
-                  "w-full flex items-center rounded-lg text-white text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-sm min-h-[40px]",
+                  "w-full flex items-center rounded-lg text-white text-sm font-medium transition-all duration-200 transform hover:scale-105 hover:shadow-md min-h-[40px]",
                   shouldShowText ? "gap-3 px-3 py-2" : "justify-center p-2",
                   action.color
                 )}
@@ -347,14 +351,14 @@ const Sidebar: React.FC<{
 
       {/* Quick Actions - Fully Collapsed State */}
       {!shouldShowExpandedContent && (
-        <div className="mt-6 pt-6 border-t border-gray-200">
+        <div className="mt-6 pt-6 border-t border-border">
           <div className="space-y-2">
             {quickActions.map((action) => (
               <button
                 key={action.label}
                 onClick={() => handleNavigation(action.route)}
                 className={cn(
-                  "w-full flex items-center justify-center p-2 rounded-lg text-white transition-all duration-200 transform hover:scale-105 hover:shadow-sm min-h-[40px]",
+                  "w-full flex items-center justify-center p-2 rounded-lg text-white transition-all duration-200 transform hover:scale-105 hover:shadow-md min-h-[40px]",
                   action.color
                 )}
                 title={`${action.label} - ${action.description}`}
@@ -373,7 +377,9 @@ const Sidebar: React.FC<{
 const Topbar: React.FC<{
   onSidebarToggle: () => void;
   isCollapsed: boolean;
-}> = ({ onSidebarToggle, isCollapsed }) => {
+  toggleTheme: () => void;
+  isDarkMode: boolean;
+}> = ({ onSidebarToggle, isCollapsed, toggleTheme, isDarkMode }) => {
   const [showProfileDropdown, setShowProfileDropdown] =
     useState<boolean>(false);
   const user = getCurrentUser() as User | null;
@@ -436,7 +442,19 @@ const Topbar: React.FC<{
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Theme Toggle removed */}
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 rounded-lg hover:bg-accent transition-colors duration-200"
+          title={`Switch to ${isDarkMode ? "light" : "dark"} mode`}
+          aria-label="Toggle theme"
+        >
+          {isDarkMode ? (
+            <Sun className="h-5 w-5 text-foreground" />
+          ) : (
+            <Moon className="h-5 w-5 text-foreground" />
+          )}
+        </button>
 
         {/* Notifications */}
         <button
@@ -492,7 +510,7 @@ const Topbar: React.FC<{
                 <hr className="my-1 border-border" />
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-red-600 transition-colors duration-150"
+                  className="w-full text-left px-4 py-2 hover:bg-destructive/10 flex items-center gap-2 text-destructive transition-colors duration-150"
                   role="menuitem"
                 >
                   <LogOut className="h-4 w-4" />
@@ -522,7 +540,7 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
   activeSection = "Dashboard",
 }) => {
   const navigate = useNavigate();
-  // Theme toggle removed; keep layout light-only
+  const { toggleTheme, isDarkMode } = useTheme();
 
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     // Check localStorage for saved preference, fallback to mobile detection
@@ -647,7 +665,12 @@ export const InventoryLayout: React.FC<InventoryLayoutProps> = ({
         )}
       >
         {/* Top Navigation */}
-        <Topbar onSidebarToggle={toggleSidebar} isCollapsed={isCollapsed} />
+        <Topbar
+          onSidebarToggle={toggleSidebar}
+          isCollapsed={isCollapsed}
+          toggleTheme={toggleTheme}
+          isDarkMode={isDarkMode}
+        />
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto bg-background">{children}</main>

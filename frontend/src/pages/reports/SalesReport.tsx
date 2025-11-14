@@ -35,8 +35,6 @@ import {
   Area,
 } from "recharts";
 import { apiService } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils/format";
-import { IndianRupeeIcon } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 
 interface SalesData {
@@ -188,7 +186,7 @@ export default function SalesReport() {
     return colors[index % colors.length];
   };
 
-  // use centralized formatter (INR)
+  const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`;
 
   return (
     <InventoryLayout activeSection="Reports">
@@ -198,7 +196,7 @@ export default function SalesReport() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <IndianRupeeIcon className="h-6 w-6 text-green-600" />
+                <DollarSign className="h-6 w-6 text-green-600" />
                 Sales Report
               </h1>
               <p className="text-gray-600 mt-1">

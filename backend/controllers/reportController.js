@@ -3,7 +3,6 @@ const Sale = require("../models/Sale");
 const Category = require("../models/Category");
 const Customer = require("../models/Customer");
 const mongoose = require("mongoose");
-const { ok, fail } = require("../utils/responder");
 
 /**
  * GET INVENTORY REPORT
@@ -202,9 +201,9 @@ const getInventoryReport = async (req, res) => {
             outOfStockItems: 0,
           };
 
-    return ok(
-      res,
-      {
+    res.json({
+      success: true,
+      data: {
         inventoryData: inventoryData.map((item) => ({
           id: item._id,
           name: item.name,
@@ -227,11 +226,15 @@ const getInventoryReport = async (req, res) => {
         supplierAnalysis,
         period,
       },
-      "Inventory report generated successfully"
-    );
+      message: "Inventory report generated successfully",
+    });
   } catch (error) {
     console.error("Error generating inventory report:", error);
-    return fail(res, error, "Failed to generate inventory report");
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate inventory report",
+      error: error.message,
+    });
   }
 };
 
@@ -416,20 +419,24 @@ const getSalesReport = async (req, res) => {
             growthRate: 0,
           };
 
-    return ok(
-      res,
-      {
+    res.json({
+      success: true,
+      data: {
         salesData,
         topProducts,
         categorySales,
         summary,
         period,
       },
-      "Sales report generated successfully"
-    );
+      message: "Sales report generated successfully",
+    });
   } catch (error) {
     console.error("Error generating sales report:", error);
-    return fail(res, error, "Failed to generate sales report");
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate sales report",
+      error: error.message,
+    });
   }
 };
 
@@ -438,10 +445,260 @@ const getSalesReport = async (req, res) => {
  * Purpose: GST and tax compliance reporting
  * Features: GST calculations, tax rates breakdown, compliance tracking
  */
-// Tax report functionality removed per project decision to deprecate Tax Report API
-// Previous implementation (GST/tax calculations and exports) was intentionally removed.
-// If tax reporting is required again in the future, reintroduce a dedicated controller
-// with small, well-scoped aggregation queries and corresponding route registration.
+const getTaxReport = async (req, res) => {
+  try {
+    const { period = "last30days", gstRate } = req.query;
+
+    const dateRange = getDateRange(period);
+
+    // Build sales filter for tax calculations
+    const salesFilter = {
+      createdAt: { $gte: dateRange.startDate, $lte: dateRange.endDate },
+      paymentStatus: { $ne: "pending" }, // Only include paid/partial sales for tax
+    };
+
+    // Get tax data by period
+    const taxData = await Sale.aggregate([
+      { $match: salesFilter },
+      {
+        $addFields: {
+          // Calculate GST components (assuming 18% GST split into CGST 9% + SGST 9%)
+          taxableAmount: {
+            $divide: ["$totalAmount", 1.18], // Reverse calculate taxable amount
+          },
+        },
+      },
+      {
+        $addFields: {
+          totalTax: { $subtract: ["$totalAmount", "$taxableAmount"] },
+          cgst: { $multiply: [{ $divide: ["$taxableAmount", 1.18] }, 0.09] },
+          sgst: { $multiply: [{ $divide: ["$taxableAmount", 1.18] }, 0.09] },
+          igst: 0, // For inter-state sales (simplified for now)
+        },
+      },
+      {
+        $group: {
+          _id: {
+            month: { $month: "$createdAt" },
+            year: { $year: "$createdAt" },
+          },
+          totalTaxableAmount: { $sum: "$taxableAmount" },
+          totalTax: { $sum: "$totalTax" },
+          cgst: { $sum: "$cgst" },
+          sgst: { $sum: "$sgst" },
+          igst: { $sum: "$igst" },
+          totalAmount: { $sum: "$totalAmount" },
+          transactions: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          period: {
+            $concat: [
+              { $toString: "$_id.month" },
+              "/",
+              { $toString: "$_id.year" },
+            ],
+          },
+          taxableAmount: { $round: ["$totalTaxableAmount", 2] },
+          totalTax: { $round: ["$totalTax", 2] },
+          cgst: { $round: ["$cgst", 2] },
+          sgst: { $round: ["$sgst", 2] },
+          igst: { $round: ["$igst", 2] },
+          totalAmount: { $round: ["$totalAmount", 2] },
+          transactions: 1,
+          _id: 0,
+        },
+      },
+      { $sort: { period: 1 } },
+    ]);
+
+    // Get GST rate-wise breakdown (simplified - assuming products have GST rates)
+    const gstRates = await Sale.aggregate([
+      { $match: salesFilter },
+      { $unwind: "$items" },
+      {
+        $lookup: {
+          from: "products",
+          localField: "items.product",
+          foreignField: "_id",
+          as: "productInfo",
+        },
+      },
+      {
+        $addFields: {
+          // Simplified GST rate assignment based on category
+          gstRate: {
+            $switch: {
+              branches: [
+                {
+                  case: {
+                    $in: [
+                      { $arrayElemAt: ["$productInfo.category", 0] },
+                      ["Electronics", "Smartphones", "Laptops"],
+                    ],
+                  },
+                  then: "18%",
+                },
+                {
+                  case: {
+                    $in: [
+                      { $arrayElemAt: ["$productInfo.category", 0] },
+                      ["Food", "Groceries"],
+                    ],
+                  },
+                  then: "5%",
+                },
+                {
+                  case: {
+                    $in: [
+                      { $arrayElemAt: ["$productInfo.category", 0] },
+                      ["Medicines"],
+                    ],
+                  },
+                  then: "12%",
+                },
+                {
+                  case: {
+                    $in: [
+                      { $arrayElemAt: ["$productInfo.category", 0] },
+                      ["Luxury"],
+                    ],
+                  },
+                  then: "28%",
+                },
+              ],
+              default: "18%",
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          gstMultiplier: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$gstRate", "5%"] }, then: 1.05 },
+                { case: { $eq: ["$gstRate", "12%"] }, then: 1.12 },
+                { case: { $eq: ["$gstRate", "18%"] }, then: 1.18 },
+                { case: { $eq: ["$gstRate", "28%"] }, then: 1.28 },
+              ],
+              default: 1.18,
+            },
+          },
+          gstPercent: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$gstRate", "5%"] }, then: 0.05 },
+                { case: { $eq: ["$gstRate", "12%"] }, then: 0.12 },
+                { case: { $eq: ["$gstRate", "18%"] }, then: 0.18 },
+                { case: { $eq: ["$gstRate", "28%"] }, then: 0.28 },
+              ],
+              default: 0.18,
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          taxableAmount: { $divide: ["$items.total", "$gstMultiplier"] },
+          totalTax: {
+            $multiply: [
+              { $divide: ["$items.total", "$gstMultiplier"] },
+              "$gstPercent",
+            ],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: "$gstRate",
+          taxableAmount: { $sum: "$taxableAmount" },
+          totalTax: { $sum: "$totalTax" },
+          cgst: { $sum: { $divide: ["$totalTax", 2] } },
+          sgst: { $sum: { $divide: ["$totalTax", 2] } },
+          igst: { $sum: 0 },
+          transactions: { $sum: 1 },
+        },
+      },
+      {
+        $project: {
+          rate: "$_id",
+          taxableAmount: { $round: ["$taxableAmount", 2] },
+          totalTax: { $round: ["$totalTax", 2] },
+          cgst: { $round: ["$cgst", 2] },
+          sgst: { $round: ["$sgst", 2] },
+          igst: { $round: ["$igst", 2] },
+          transactions: 1,
+          _id: 0,
+        },
+      },
+      { $sort: { rate: 1 } },
+    ]);
+
+    // Calculate tax summary
+    const taxSummary = await Sale.aggregate([
+      { $match: salesFilter },
+      {
+        $addFields: {
+          taxableAmount: { $divide: ["$totalAmount", 1.18] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalTaxCollected: {
+            $sum: {
+              $subtract: ["$totalAmount", { $divide: ["$totalAmount", 1.18] }],
+            },
+          },
+          totalTaxableAmount: { $sum: { $divide: ["$totalAmount", 1.18] } },
+          totalTransactions: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Mock tax returns status (in real app, this would come from a separate collection)
+    const taxReturns = generateMockTaxReturns();
+
+    const summary =
+      taxSummary.length > 0
+        ? {
+            totalTaxCollected: Math.round(taxSummary[0].totalTaxCollected),
+            totalTaxableAmount: Math.round(taxSummary[0].totalTaxableAmount),
+            totalTransactions: taxSummary[0].totalTransactions,
+            pendingReturns: taxReturns.filter((r) => r.status === "pending")
+              .length,
+            complianceScore: calculateComplianceScore(taxReturns),
+          }
+        : {
+            totalTaxCollected: 0,
+            totalTaxableAmount: 0,
+            totalTransactions: 0,
+            pendingReturns: 0,
+            complianceScore: 100,
+          };
+
+    res.json({
+      success: true,
+      data: {
+        taxData,
+        gstRates,
+        taxReturns,
+        summary,
+        period,
+      },
+      message: "Tax report generated successfully",
+    });
+  } catch (error) {
+    console.error("Error generating tax report:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate tax report",
+      error: error.message,
+    });
+  }
+};
 
 // Helper functions
 const getDateRange = (period) => {
@@ -559,4 +816,5 @@ const calculateComplianceScore = (returns) => {
 module.exports = {
   getInventoryReport,
   getSalesReport,
+  getTaxReport,
 };

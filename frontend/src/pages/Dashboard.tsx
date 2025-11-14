@@ -167,18 +167,18 @@ export default function Dashboard() {
     <InventoryLayout activeSection="Dashboard">
       <div className="p-8 flex flex-col gap-6">
         {/* Welcome Header */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
+        <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Home className="h-6 w-6 text-blue-600" />
+              <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+                <Home className="h-6 w-6 text-primary" />
                 Dashboard
               </h1>
-              <p className="text-gray-600 mt-1">Welcome back! Here's what's happening with your business.</p>
+              <p className="text-muted-foreground mt-1">Welcome back! Here's what's happening with your business.</p>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">Today</p>
-              <p className="text-lg font-semibold text-gray-900">{new Date().toLocaleDateString()}</p>
+              <p className="text-sm text-muted-foreground">Today</p>
+              <p className="text-lg font-semibold text-foreground">{new Date().toLocaleDateString()}</p>
             </div>
           </div>
         </div>
@@ -189,45 +189,45 @@ export default function Dashboard() {
             
             {/* Quick Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-              <div className="bg-white p-4 rounded-lg shadow-sm">
+              <div className="bg-card p-4 rounded-lg shadow-sm border border-border hover:border-primary/50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Today's Sales</p>
-                    <p className="text-2xl font-bold text-green-600">
+                    <p className="text-sm text-muted-foreground">Today's Sales</p>
+                    <p className="text-2xl font-bold text-success">
                       {loading ? '...' : `₹${(dashboardStats.todayRevenue || 0).toLocaleString()}`}
                     </p>
                   </div>
-                  <TrendingUp className="h-8 w-8 text-green-600" />
+                  <TrendingUp className="h-8 w-8 text-success" />
                 </div>
-                <p className="text-xs text-green-600 mt-2">
+                <p className="text-xs text-success/70 mt-2">
                   {loading ? 'Loading...' : `${dashboardStats.todaySales || 0} transactions`}
                 </p>
               </div>
               
-              <div className="bg-white p-4 rounded-lg shadow-sm">
+              <div className="bg-card p-4 rounded-lg shadow-sm border border-border hover:border-primary/50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">Products Sold</p>
-                    <p className="text-2xl font-bold text-blue-600">
+                    <p className="text-sm text-muted-foreground">Products Sold</p>
+                    <p className="text-2xl font-bold text-primary">
                       {loading ? '...' : (dashboardStats.todayProductsSold || 0)}
                     </p>
                   </div>
-                  <Package className="h-8 w-8 text-blue-600" />
+                  <Package className="h-8 w-8 text-primary" />
                 </div>
-                <p className="text-xs text-blue-600 mt-2">Items sold today</p>
+                <p className="text-xs text-primary/70 mt-2">Items sold today</p>
               </div>
               
-              <div className="bg-white p-4 rounded-lg shadow-sm">
+              <div className="bg-card p-4 rounded-lg shadow-sm border border-border hover:border-primary/50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600">New Customers</p>
-                    <p className="text-2xl font-bold text-purple-600">
+                    <p className="text-sm text-muted-foreground">New Customers</p>
+                    <p className="text-2xl font-bold text-chart-5">
                       {loading ? '...' : (dashboardStats.newCustomersToday || 0)}
                     </p>
                   </div>
-                  <Users className="h-8 w-8 text-purple-600" />
+                  <Users className="h-8 w-8 text-chart-5" />
                 </div>
-                <p className="text-xs text-purple-600 mt-2">Registered today</p>
+                <p className="text-xs text-chart-5/70 mt-2">Registered today</p>
               </div>
             </div>
 
@@ -245,23 +245,23 @@ export default function Dashboard() {
         </div>
         
         {/* Recent Activity */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+        <div className="bg-card rounded-xl shadow-sm p-6 border border-border">
+          <h3 className="text-lg font-semibold mb-4 text-foreground">Recent Activity</h3>
           <div className="space-y-3">
             {loading ? (
               // Loading skeleton
               [...Array(3)].map((_, i) => (
-                <div key={i} className="flex items-center justify-between py-2 border-b border-gray-100 animate-pulse">
+                <div key={i} className="flex items-center justify-between py-2 border-b border-border animate-pulse">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    <div className="w-8 h-8 bg-muted rounded-full"></div>
                     <div>
-                      <div className="h-4 bg-gray-200 rounded w-32 mb-1"></div>
-                      <div className="h-3 bg-gray-200 rounded w-24"></div>
+                      <div className="h-4 bg-muted rounded w-32 mb-1"></div>
+                      <div className="h-3 bg-muted rounded w-24"></div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="h-4 bg-gray-200 rounded w-16 mb-1"></div>
-                    <div className="h-3 bg-gray-200 rounded w-12"></div>
+                    <div className="h-4 bg-muted rounded w-16 mb-1"></div>
+                    <div className="h-3 bg-muted rounded w-12"></div>
                   </div>
                 </div>
               ))
@@ -269,28 +269,28 @@ export default function Dashboard() {
               recentActivity.map((activity) => {
                 const IconComponent = getActivityIcon(activity.icon);
                 return (
-                  <div key={activity.id} className="flex items-center justify-between py-2 border-b border-gray-100">
+                  <div key={activity.id} className="flex items-center justify-between py-2 border-b border-border last:border-b-0">
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 ${activity.bgColor} rounded-full flex items-center justify-center`}>
+                      <div className={`w-8 h-8 ${activity.bgColor} dark:opacity-80 rounded-full flex items-center justify-center`}>
                         <IconComponent className={`h-4 w-4 ${activity.iconColor}`} />
                       </div>
                       <div>
-                        <p className="font-medium">{activity.title}</p>
-                        <p className="text-sm text-gray-500">{activity.subtitle}</p>
+                        <p className="font-medium text-foreground">{activity.title}</p>
+                        <p className="text-sm text-muted-foreground">{activity.subtitle}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       {activity.amount && (
                         <p className={`font-medium ${activity.amountColor}`}>{activity.amount}</p>
                       )}
-                      <p className="text-xs text-gray-500">{activity.time}</p>
+                      <p className="text-xs text-muted-foreground">{activity.time}</p>
                     </div>
                   </div>
                 );
               })
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Clock className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+              <div className="text-center py-8 text-muted-foreground">
+                <Clock className="h-12 w-12 mx-auto mb-2 text-muted" />
                 <p>No recent activity</p>
               </div>
             )}

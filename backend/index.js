@@ -6,8 +6,6 @@ const session = require("express-session");
 const MongoStore = require("connect-mongo");
 const path = require("path");
 const fs = require("fs");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
 
 // Load environment variables first
 dotenv.config();
@@ -40,9 +38,6 @@ const passport = require("passport");
 
 const app = express();
 
-// Error/404 handlers
-const { notFound, errorHandler } = require("./middleware/errorHandler");
-
 // Import routes
 const authRoutes = require("./routes/auth");
 const productRoutes = require("./routes/products");
@@ -53,11 +48,9 @@ const supplierRoutes = require("./routes/suppliers");
 const labelRoutes = require("./routes/labels");
 const reportRoutes = require("./routes/reports");
 const userRoutes = require("./routes/users");
-const returnRoutes = require("./routes/returns");
 
 // Middleware
-app.use(helmet());
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json());
 
 // Enhanced CORS configuration
 app.use(
@@ -87,16 +80,6 @@ app.use(
 );
 
 app.use(express.urlencoded({ extended: true }));
-
-// Basic rate limiting (tune thresholds as needed)
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000,
-    standardHeaders: true,
-    legacyHeaders: false,
-  })
-);
 
 // Serve static files for uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
@@ -164,7 +147,6 @@ app.use("/api/suppliers", supplierRoutes);
 app.use("/api/labels", labelRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/returns", returnRoutes);
 
 // Database connection and server startup
 const startServer = async () => {
@@ -194,6 +176,39 @@ const startServer = async () => {
 // Start the server
 startServer();
 
-// Centralized 404 and error middleware (must be after routes and startup)
-app.use(notFound);
-app.use(errorHandler);
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Error occurred:", err.stack);
+
+  // Handle CORS errors
+  if (err.message === "Not allowed by CORS") {
+    return res.status(403).json({
+      success: false,
+      message: "CORS policy violation",
+      error: "Origin not allowed",
+    });
+  }
+
+  // Handle other errors
+  res.status(err.status || 500).json({
+    success: false,
+    message: "Something went wrong!",
+    error:
+      process.env.NODE_ENV === "development"
+        ? err.message
+        : "Internal server error",
+  });
+});
+
+// 404 handler - must be last
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+    availableRoutes: {
+      auth: "/api/auth/*",
+      products: "/api/products/*",
+      documentation: "/api/products/test/routes",
+    },
+  });
+});

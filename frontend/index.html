@@ -24,16 +24,22 @@
 
     <title>Stockify</title>
 
-    <!-- Prevent Flash of Unstyled Content (force light theme only) -->
+    <!-- Prevent Flash of Unstyled Content -->
     <script>
-      // Remove any dark-mode bootstrapping. Force light theme to avoid flashes.
+      // Set initial theme before page loads to prevent flash
       (function () {
-        try {
-          document.documentElement.classList.remove("dark");
+        const theme = localStorage.getItem("stockify-theme") || "system";
+        const isDark =
+          theme === "dark" ||
+          (theme === "system" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+        if (isDark) {
+          document.documentElement.classList.add("dark");
+          document.documentElement.style.colorScheme = "dark";
+        } else {
           document.documentElement.classList.add("light");
           document.documentElement.style.colorScheme = "light";
-        } catch (e) {
-          // ignore
         }
       })();
     </script>

@@ -40,9 +40,17 @@ const supplierSchema = new mongoose.Schema(
       full: String, // Complete address as a single string
     },
 
-    // Allow dynamic categories created by users (don't restrict to a fixed enum)
     category: {
       type: String,
+      enum: [
+        "Electronics",
+        "Clothing",
+        "Home & Garden",
+        "Sports",
+        "Books",
+        "Beauty",
+        "Other",
+      ],
       default: "Other",
     },
 

@@ -110,8 +110,7 @@ const getDashboardStats = async (req, res) => {
       .sort({ updatedAt: -1 })
       .limit(10)
       .select("name sku currentStock updatedAt category supplier.name")
-      .populate("createdBy", "name")
-      .lean();
+      .populate("createdBy", "name");
 
     // Top selling products (by totalSold)
     const topSellingProducts = await Product.find({
@@ -120,16 +119,13 @@ const getDashboardStats = async (req, res) => {
     })
       .sort({ totalSold: -1 })
       .limit(5)
-      .select("name sku totalSold sellingPrice category lastSoldDate")
-      .lean();
+      .select("name sku totalSold sellingPrice category lastSoldDate");
 
     // Critical alerts
     const criticalAlerts = await Product.find({
       ...userFilter,
       currentStock: 0,
-    })
-      .select("name sku category supplier.name")
-      .lean();
+    }).select("name sku category supplier.name");
 
     res.json({
       success: true,
@@ -164,8 +160,6 @@ const getDashboardStats = async (req, res) => {
  * Purpose: Product listing with multi-supplier support and comprehensive filters
  * Features: Search, supplier filter, price range, stock status, sorting
  */
-const { ok, fail } = require("../utils/responder");
-
 const getProducts = async (req, res) => {
   try {
     const {
@@ -244,20 +238,27 @@ const getProducts = async (req, res) => {
 
     const total = await Product.countDocuments(filter);
 
-    return ok(res, {
-      products,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        itemsPerPage: parseInt(limit),
-        hasNextPage: page < Math.ceil(total / limit),
-        hasPrevPage: page > 1,
+    res.json({
+      success: true,
+      data: {
+        products,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: parseInt(limit),
+          hasNextPage: page < Math.ceil(total / limit),
+          hasPrevPage: page > 1,
+        },
       },
     });
   } catch (error) {
     console.error("Get products error:", error);
-    return fail(res, error, "Error fetching products");
+    res.status(500).json({
+      success: false,
+      message: "Error fetching products",
+      error: error.message,
+    });
   }
 };
 
@@ -325,7 +326,10 @@ const bulkImportProducts = async (req, res) => {
     const { products, supplierInfo, importOptions = {} } = req.body;
 
     if (!Array.isArray(products) || products.length === 0) {
-      return fail(res, null, "Products array is required", 400);
+      return res.status(400).json({
+        success: false,
+        message: "Products array is required",
+      });
     }
 
     const results = {
@@ -347,15 +351,14 @@ const bulkImportProducts = async (req, res) => {
         // Check for existing SKU
         const existingProduct = await Product.findOne({
           sku: productData.sku,
-          createdBy: req.user._id,
-        }).lean();
+        });
 
         if (existingProduct) {
           if (importOptions.updateExisting) {
             // Update existing product
             const updated = await Product.findByIdAndUpdate(
               existingProduct._id,
-              { ...enrichedProduct, createdBy: req.user._id },
+              enrichedProduct,
               { new: true, runValidators: true }
             );
             results.updated.push(updated);
@@ -380,9 +383,10 @@ const bulkImportProducts = async (req, res) => {
       }
     }
 
-    return ok(
-      res,
-      {
+    res.json({
+      success: true,
+      message: "Bulk import completed",
+      data: {
         summary: {
           total: products.length,
           successful: results.successful.length,
@@ -392,11 +396,14 @@ const bulkImportProducts = async (req, res) => {
         },
         results,
       },
-      "Bulk import completed"
-    );
+    });
   } catch (error) {
     console.error("Bulk import error:", error);
-    return fail(res, error, "Error during bulk import");
+    res.status(500).json({
+      success: false,
+      message: "Error during bulk import",
+      error: error.message,
+    });
   }
 };
 
@@ -422,12 +429,10 @@ const trackStockMovement = async (req, res) => {
       createdBy: req.user._id, // Ensure user can only track their own products
     });
     if (!product) {
-      return fail(
-        res,
-        null,
-        "Product not found or you do not have permission to access it",
-        404
-      );
+      return res.status(404).json({
+        success: false,
+        message: "Product not found or you do not have permission to access it",
+      });
     }
 
     const oldStock = product.currentStock;
@@ -464,9 +469,12 @@ const trackStockMovement = async (req, res) => {
       timestamp: new Date(),
     };
 
-    return ok(
-      res,
-      {
+    res.json({
+      success: true,
+      message: `Stock ${
+        movementType === "in" ? "received" : "issued"
+      } successfully`,
+      data: {
         product: {
           id: product._id,
           name: product.name,
@@ -476,11 +484,14 @@ const trackStockMovement = async (req, res) => {
         },
         movement: movementRecord,
       },
-      `Stock ${movementType === "in" ? "received" : "issued"} successfully`
-    );
+    });
   } catch (error) {
     console.error("Stock movement error:", error);
-    return fail(res, error, "Error tracking stock movement");
+    res.status(500).json({
+      success: false,
+      message: "Error tracking stock movement",
+      error: error.message,
+    });
   }
 };
 
@@ -499,12 +510,10 @@ const getProductPricing = async (req, res) => {
       createdBy: req.user._id, // Ensure user can only access their own products
     });
     if (!product) {
-      return fail(
-        res,
-        null,
-        "Product not found or you do not have permission to access it",
-        404
-      );
+      return res.status(404).json({
+        success: false,
+        message: "Product not found or you do not have permission to access it",
+      });
     }
 
     let applicablePrice;
@@ -525,33 +534,40 @@ const getProductPricing = async (req, res) => {
     const profit = totalPrice - totalCost;
     const profitMargin = ((profit / totalCost) * 100).toFixed(2);
 
-    return ok(res, {
-      product: {
-        id: product._id,
-        name: product.name,
-        sku: product.sku,
-        currentStock: product.currentStock,
-      },
-      pricing: {
-        costPrice: product.costPrice,
-        retailPrice: product.sellingPrice,
-        wholesalePrice: product.wholesalePrice,
-        applicablePrice,
-        priceType,
-        quantity,
-        totalPrice,
-        profit,
-        profitMargin: `${profitMargin}%`,
-      },
-      availability: {
-        inStock: product.currentStock >= quantity,
-        availableQuantity: product.currentStock,
-        isLowStock: product.currentStock <= product.minStockLevel,
+    res.json({
+      success: true,
+      data: {
+        product: {
+          id: product._id,
+          name: product.name,
+          sku: product.sku,
+          currentStock: product.currentStock,
+        },
+        pricing: {
+          costPrice: product.costPrice,
+          retailPrice: product.sellingPrice,
+          wholesalePrice: product.wholesalePrice,
+          applicablePrice,
+          priceType,
+          quantity,
+          totalPrice,
+          profit,
+          profitMargin: `${profitMargin}%`,
+        },
+        availability: {
+          inStock: product.currentStock >= quantity,
+          availableQuantity: product.currentStock,
+          isLowStock: product.currentStock <= product.minStockLevel,
+        },
       },
     });
   } catch (error) {
     console.error("Get product pricing error:", error);
-    return fail(res, error, "Error fetching product pricing");
+    res.status(500).json({
+      success: false,
+      message: "Error fetching product pricing",
+      error: error.message,
+    });
   }
 };
 
@@ -655,9 +671,7 @@ const getProduct = async (req, res) => {
     const product = await Product.findOne({
       _id: req.params.id,
       createdBy: req.user._id, // Ensure user can only access their own products
-    })
-      .populate("createdBy", "name email")
-      .lean();
+    }).populate("createdBy", "name email");
 
     if (!product) {
       return res.status(404).json({
@@ -666,9 +680,11 @@ const getProduct = async (req, res) => {
       });
     }
 
+    const productData = product.toObject({ virtuals: true });
+
     res.json({
       success: true,
-      data: product,
+      data: productData,
     });
   } catch (error) {
     console.error("Get product error:", error);
@@ -706,7 +722,10 @@ const createProduct = async (req, res) => {
       });
 
       if (!supplierExists) {
-        return fail(res, null, "Invalid supplier selected", 400);
+        return res.status(400).json({
+          success: false,
+          message: "Invalid supplier selected",
+        });
       }
 
       // Also populate supplier info for backward compatibility
@@ -722,7 +741,7 @@ const createProduct = async (req, res) => {
     const savedProduct = await product.save();
     await savedProduct.populate("createdBy", "name email");
 
-    // If product has a category, ensure it exists in Category collection (per-tenant)
+    // If product has a category, ensure it exists in Category collection
     if (savedProduct.category) {
       try {
         // Check if category already exists
@@ -731,8 +750,7 @@ const createProduct = async (req, res) => {
             $regex: new RegExp(`^${savedProduct.category.trim()}$`, "i"),
           },
           isActive: true,
-          createdBy: req.user._id,
-        }).lean();
+        });
 
         if (!existingCategory) {
           // Create category from product if it doesn't exist
@@ -741,7 +759,6 @@ const createProduct = async (req, res) => {
             type: "from_products",
             isDefault: false,
             isPopular: false,
-            createdBy: req.user._id,
           });
           await newCategory.save();
         }
@@ -751,20 +768,35 @@ const createProduct = async (req, res) => {
       }
     }
 
-    return ok(res, savedProduct, "Product created successfully", 201);
+    res.status(201).json({
+      success: true,
+      message: "Product created successfully",
+      data: savedProduct,
+    });
   } catch (error) {
     console.error("Create product error:", error);
 
     if (error.code === 11000) {
-      return fail(res, null, "Product with this SKU already exists", 400);
+      return res.status(400).json({
+        success: false,
+        message: "Product with this SKU already exists",
+      });
     }
 
     if (error.name === "ValidationError") {
       const errors = Object.values(error.errors).map((err) => err.message);
-      return fail(res, { errors }, "Validation failed", 400);
+      return res.status(400).json({
+        success: false,
+        message: "Validation failed",
+        errors,
+      });
     }
 
-    return fail(res, error, "Error creating product");
+    res.status(500).json({
+      success: false,
+      message: "Error creating product",
+      error: error.message,
+    });
   }
 };
 
@@ -783,12 +815,10 @@ const updateProduct = async (req, res) => {
     ).populate("createdBy", "name email");
 
     if (!product) {
-      return fail(
-        res,
-        null,
-        "Product not found or you do not have permission to update it",
-        404
-      );
+      return res.status(404).json({
+        success: false,
+        message: "Product not found or you do not have permission to update it",
+      });
     }
 
     // If product has a new category, ensure it exists in Category collection
@@ -798,8 +828,7 @@ const updateProduct = async (req, res) => {
         const existingCategory = await Category.findOne({
           name: { $regex: new RegExp(`^${product.category.trim()}$`, "i") },
           isActive: true,
-          createdBy: req.user._id,
-        }).lean();
+        });
 
         if (!existingCategory) {
           // Create category from product if it doesn't exist
@@ -808,7 +837,6 @@ const updateProduct = async (req, res) => {
             type: "from_products",
             isDefault: false,
             isPopular: false,
-            createdBy: req.user._id,
           });
           await newCategory.save();
         }
@@ -821,15 +849,26 @@ const updateProduct = async (req, res) => {
       }
     }
 
-    return ok(res, product, "Product updated successfully");
+    res.json({
+      success: true,
+      message: "Product updated successfully",
+      data: product,
+    });
   } catch (error) {
     console.error("Update product error:", error);
 
     if (error.code === 11000) {
-      return fail(res, null, "Product with this SKU already exists", 400);
+      return res.status(400).json({
+        success: false,
+        message: "Product with this SKU already exists",
+      });
     }
 
-    return fail(res, error, "Error updating product");
+    res.status(500).json({
+      success: false,
+      message: "Error updating product",
+      error: error.message,
+    });
   }
 };
 
@@ -1376,7 +1415,10 @@ const searchProductsForBilling = async (req, res) => {
     const { q: search, limit = 20 } = req.query;
 
     if (!search || search.trim().length < 2) {
-      return ok(res, { products: [] });
+      return res.json({
+        success: true,
+        data: { products: [] },
+      });
     }
 
     // Search products with multi-field matching
@@ -1400,17 +1442,21 @@ const searchProductsForBilling = async (req, res) => {
       .sort({ name: 1 })
       .limit(parseInt(limit));
 
-    return ok(
-      res,
-      {
+    res.json({
+      success: true,
+      data: {
         products,
         total: products.length,
       },
-      `Found ${products.length} products`
-    );
+      message: `Found ${products.length} products`,
+    });
   } catch (error) {
     console.error("Search products for billing error:", error);
-    return fail(res, error, "Error searching products");
+    res.status(500).json({
+      success: false,
+      message: "Error searching products",
+      error: error.message,
+    });
   }
 };
 

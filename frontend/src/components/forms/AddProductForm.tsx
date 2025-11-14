@@ -18,6 +18,7 @@ import type { CreateProductRequest, Supplier } from "@/types/product";
 import SupplierSelect from "@/components/common/SupplierSelect";
 import CategorySelect from "@/components/common/CategorySelect";
 import PDFBulkImport from "@/components/inventory/PDFBulkImport";
+import APITestComponent from "@/components/debug/APITestComponent";
 import {
   Package,
   DollarSign,
@@ -26,7 +27,9 @@ import {
   Save,
   RefreshCw,
   FileText,
+  Upload,
   CheckCircle,
+  Bug,
 } from "lucide-react";
 
 interface AddProductFormProps {
@@ -41,6 +44,10 @@ export default function AddProductForm({
   editProduct,
 }: AddProductFormProps) {
   const { toast } = useToast();
+
+  // PDF Import Modal State
+  const [isPDFImportOpen, setIsPDFImportOpen] = useState(false);
+  const [isDebugOpen, setIsDebugOpen] = useState(false);
 
   const [formData, setFormData] = useState<CreateProductRequest>({
     name: "",
@@ -70,8 +77,9 @@ export default function AddProductForm({
   const [error, setError] = useState<string | null>(null);
   const [profitMargin, setProfitMargin] = useState(0);
 
-  // Import modal state (used for bulk imports)
-  const [isPDFImportOpen, setIsPDFImportOpen] = useState(false);
+  // PDF Upload state
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [isProcessingPDF, setIsProcessingPDF] = useState(false);
 
   // Add states for suggestions
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
@@ -224,16 +232,11 @@ export default function AddProductForm({
       ...prev,
       supplierId: supplier._id,
       // Also set the old format for backward compatibility
-      // Ensure address is always a string (backend product validation expects a string)
       supplier: {
         name: supplier.name,
         contact: supplier.phone,
         email: supplier.email,
-        address:
-          (supplier as any).address &&
-          typeof (supplier as any).address === "object"
-            ? (supplier as any).address.full || ""
-            : (supplier as any).address || "",
+        address: supplier.address || "",
       },
     }));
   };
@@ -260,7 +263,7 @@ export default function AddProductForm({
     setShowSuggestions((prev) => ({ ...prev, [field]: false }));
   };
 
-  // Bulk import success handler (used by import dialog)
+  // PDF Import Success Handler
   const handlePDFImportSuccess = () => {
     setIsPDFImportOpen(false);
     toast({
@@ -275,9 +278,82 @@ export default function AddProductForm({
     }
   };
 
-  // NOTE: The detailed per-file upload/drop area was removed in favor of the
-  // header-level import dialog. The dialog component handles file selection
-  // and processing. This keeps the Add Product form compact.
+  // Handle PDF file upload and processing
+  const handlePDFUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file || file.type !== "application/pdf") {
+      toast({
+        type: "error",
+        title: "Invalid File",
+        description: "Please select a PDF file.",
+        duration: 3000,
+      });
+      return;
+    }
+
+    setPdfFile(file);
+    setIsProcessingPDF(true);
+
+    try {
+      const token = localStorage.getItem("authToken");
+      const formData = new FormData();
+      formData.append("pdfFile", file);
+      formData.append("supplierName", "PDF Import");
+      formData.append("defaultCategory", "Imported");
+
+      const response = await fetch("/api/products/pdf-import/process", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success && result.data?.sampleProducts?.length > 0) {
+        const firstProduct = result.data.sampleProducts[0];
+
+        // Pre-fill form with first product data
+        setFormData((prev) => ({
+          ...prev,
+          name: firstProduct.name,
+          description: firstProduct.description || "",
+          brand: firstProduct.brand || "",
+          costPrice: firstProduct.costPrice || 0,
+          sellingPrice: firstProduct.sellingPrice || 0,
+          currentStock: firstProduct.currentStock || 0,
+          category: firstProduct.category || "Imported",
+        }));
+
+        toast({
+          type: "success",
+          title: "PDF Processed Successfully!",
+          description: `Found ${result.data.sampleProducts.length} products. Form filled with first product.`,
+          duration: 5000,
+        });
+      } else {
+        throw new Error(
+          result.message || "Failed to extract products from PDF"
+        );
+      }
+    } catch (error) {
+      console.error("PDF processing error:", error);
+      toast({
+        type: "error",
+        title: "PDF Processing Failed",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to process PDF file.",
+        duration: 5000,
+      });
+    } finally {
+      setIsProcessingPDF(false);
+    }
+  };
 
   const filterSuggestions = (suggestions: string[], input: string) => {
     if (!input) return suggestions;
@@ -358,7 +434,7 @@ export default function AddProductForm({
           wholesalePrice: 0,
           currentStock: 0,
           minStockLevel: 10,
-          maxStockLevel: 100,
+          maxStockLevel: 1000,
           weight: 0,
           dimensions: {
             length: 0,
@@ -411,26 +487,43 @@ export default function AddProductForm({
       </div>
 
       <Card className="shadow-lg">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b py-4 px-6">
-          <CardTitle className="flex items-center justify-between w-full">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <CardTitle className="flex items-center justify-between">
             <div className="flex items-center">
               <Package className="h-6 w-6 mr-2 text-blue-600" />
               Product Information
             </div>
             <div className="flex gap-2">
+              <Dialog open={isDebugOpen} onOpenChange={setIsDebugOpen}>
+                {/* <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2 hover:bg-red-50"
+                  >
+                    <Bug className="h-4 w-4" />
+                    Debug API
+                  </Button>
+                </DialogTrigger> */}
+                {/* <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>API Connectivity Test</DialogTitle>
+                  </DialogHeader>
+                  <APITestComponent />
+                </DialogContent> */}
+              </Dialog>
               <Dialog open={isPDFImportOpen} onOpenChange={setIsPDFImportOpen}>
-                <DialogTrigger asChild>
+                {/* <DialogTrigger asChild>
                   <Button
                     variant="outline"
                     className="flex items-center gap-2 hover:bg-blue-50"
                   >
                     <FileText className="h-4 w-4" />
-                    Import from Excel
+                    Import from PDF
                   </Button>
-                </DialogTrigger>
+                </DialogTrigger> */}
                 <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
-                    <DialogTitle>Excel / CSV Bulk Import</DialogTitle>
+                    <DialogTitle>PDF Bulk Import</DialogTitle>
                   </DialogHeader>
                   <PDFBulkImport onSuccess={handlePDFImportSuccess} />
                 </DialogContent>
@@ -456,13 +549,128 @@ export default function AddProductForm({
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* PDF import card removed - header import dialog handles bulk imports now */}
+            {/* PDF Import Section */}
+            <div className="mb-8">
+              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 hover:shadow-md transition-shadow">
+                <CardHeader className="pb-4">
+                  <CardTitle className="flex items-center text-blue-800">
+                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
+                      <Upload className="h-5 w-5 text-blue-600" />
+                    </div>
+                    Quick Import from PDF
+                  </CardTitle>
+                  <p className="text-sm text-blue-600">
+                    Automatically extract product information from PDF catalogs,
+                    invoices, or price lists
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <input
+                    type="file"
+                    accept=".pdf"
+                    onChange={handlePDFUpload}
+                    className="hidden"
+                    id="pdf-upload-input"
+                    disabled={isProcessingPDF}
+                  />
+
+                  <Card
+                    className="p-8 border-dashed border-2 border-blue-300 hover:border-blue-500 transition-all cursor-pointer bg-white/80 hover:bg-blue-50/80 hover:scale-[1.02]"
+                    onClick={() =>
+                      document.getElementById("pdf-upload-input")?.click()
+                    }
+                  >
+                    <div className="text-center">
+                      {isProcessingPDF ? (
+                        <div className="space-y-4">
+                          <div className="flex justify-center">
+                            <div className="relative">
+                              <RefreshCw className="h-16 w-16 text-blue-600 animate-spin" />
+                              <div className="absolute inset-0 h-16 w-16 border-4 border-blue-200 rounded-full animate-pulse"></div>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-blue-700 text-lg">
+                              Processing PDF...
+                            </p>
+                            <p className="text-sm text-blue-600 mt-2">
+                              Using AI to extract product information
+                            </p>
+                            <div className="flex justify-center mt-3">
+                              <div className="flex space-x-1">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                                <div
+                                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                                  style={{ animationDelay: "0.1s" }}
+                                ></div>
+                                <div
+                                  className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"
+                                  style={{ animationDelay: "0.2s" }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : pdfFile ? (
+                        <div className="space-y-4">
+                          <div className="flex justify-center">
+                            <div className="p-3 bg-green-100 rounded-full">
+                              <CheckCircle className="h-16 w-16 text-green-600" />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-green-700 text-lg">
+                              PDF Processed Successfully!
+                            </p>
+                            <p className="text-sm text-green-600 mt-1 font-medium">
+                               {pdfFile.name}
+                            </p>
+                            <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                              <p className="text-xs text-green-700">
+                                 Form has been auto-filled with extracted data
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="flex justify-center">
+                            <div className="p-4 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors">
+                              <Upload className="h-16 w-16 text-blue-600" />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="font-semibold text-blue-700 text-xl">
+                              Click to Upload PDF
+                            </p>
+                            <p className="text-blue-600 mt-2">
+                              Automatically extract product information using AI
+                            </p>
+                            <div className="flex flex-wrap justify-center gap-2 mt-4">
+                              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                 Product Catalogs
+                              </span>
+                              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                 Invoices
+                              </span>
+                              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                 Price Lists
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                </CardContent>
+              </Card>
+            </div>
 
             {/* Basic Information */}
             <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gray-50 border-b py-3 px-4">
-                <CardTitle className="flex items-center text-lg gap-3">
-                  <div className="p-2 bg-blue-100 rounded-md mr-3 flex items-center justify-center">
+              <CardHeader className="bg-gray-50 border-b">
+                <CardTitle className="flex items-center text-lg">
+                  <div className="p-2 bg-blue-100 rounded-lg mr-3">
                     <Package className="h-5 w-5 text-blue-600" />
                   </div>
                   Basic Information
@@ -661,9 +869,9 @@ export default function AddProductForm({
 
             {/* Supplier Information */}
             <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gray-50 border-b py-3 px-4">
-                <CardTitle className="flex items-center text-lg gap-3">
-                  <div className="p-2 bg-green-100 rounded-md mr-3 flex items-center justify-center">
+              <CardHeader className="bg-gray-50 border-b">
+                <CardTitle className="flex items-center text-lg">
+                  <div className="p-2 bg-green-100 rounded-lg mr-3">
                     <Package className="h-5 w-5 text-green-600" />
                   </div>
                   Supplier Information
@@ -683,7 +891,7 @@ export default function AddProductForm({
                     </div>
                     {selectedSupplier.email && (
                       <p className="text-sm text-green-600 mt-1">
-                        📧 {selectedSupplier.email}
+                         {selectedSupplier.email}
                       </p>
                     )}
                     {selectedSupplier.phone && (
@@ -698,9 +906,9 @@ export default function AddProductForm({
 
             {/* Pricing */}
             <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b py-3 px-4">
-                <CardTitle className="flex items-center text-lg gap-3">
-                  <div className="p-2 bg-green-100 rounded-md mr-3 flex items-center justify-center">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 border-b">
+                <CardTitle className="flex items-center text-lg">
+                  <div className="p-2 bg-green-100 rounded-lg mr-3">
                     <DollarSign className="h-5 w-5 text-green-600" />
                   </div>
                   Pricing Information
@@ -854,9 +1062,9 @@ export default function AddProductForm({
 
             {/* Stock Information */}
             <Card className="shadow-md hover:shadow-lg transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b py-3 px-4">
-                <CardTitle className="flex items-center text-lg gap-3">
-                  <div className="p-2 bg-purple-100 rounded-md mr-3 flex items-center justify-center">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+                <CardTitle className="flex items-center text-lg">
+                  <div className="p-2 bg-purple-100 rounded-lg mr-3">
                     <Package className="h-5 w-5 text-purple-600" />
                   </div>
                   Stock Information

@@ -1,13 +1,6 @@
-import React, { useState, useCallback } from "react";
-import {
-  Upload,
-  FileText,
-  AlertCircle,
-  CheckCircle,
-  Eye,
-  RefreshCw,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useCallback } from 'react';
+import { Upload, FileText, AlertCircle, CheckCircle, Eye, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Types
 interface ExtractedProduct {
@@ -66,98 +59,71 @@ interface PDFBulkImportProps {
   onCancel?: () => void;
 }
 
-const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
-  onSuccess,
-  onCancel,
-}) => {
+const PDFBulkImport: React.FC<PDFBulkImportProps> = ({ onSuccess, onCancel }) => {
   // State management
-  const [currentStep, setCurrentStep] = useState<
-    "upload" | "preview" | "edit" | "confirm" | "success"
-  >("upload");
+  const [currentStep, setCurrentStep] = useState<'upload' | 'preview' | 'edit' | 'confirm' | 'success'>('upload');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [extractionResults, setExtractionResults] = useState<
-    PDFImportResponse["data"] | null
-  >(null);
+  const [extractionResults, setExtractionResults] = useState<PDFImportResponse['data'] | null>(null);
   const [supplierInfo, setSupplierInfo] = useState({
-    name: "Excel Import",
-    contact: "",
-    email: "",
-    address: "",
+    name: 'PDF Import',
+    contact: '',
+    email: '',
+    address: ''
   });
   const [importOptions, setImportOptions] = useState({
     updateExisting: false,
-    defaultCategory: "Imported",
-    priceType: "selling" as "selling" | "cost",
+    defaultCategory: 'Imported',
+    priceType: 'selling' as 'selling' | 'cost'
   });
   const [editedProducts, setEditedProducts] = useState<ExtractedProduct[]>([]);
   const [importStats, setImportStats] = useState<any>(null);
 
   // File handling
-  const isAcceptedFile = (file: File) => {
-    const acceptedTypes = [
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
-      "application/vnd.ms-excel", // .xls
-      "text/csv", // .csv
-    ];
-    const lowerName = file.name.toLowerCase();
-    const extAccepted =
-      lowerName.endsWith(".xlsx") ||
-      lowerName.endsWith(".xls") ||
-      lowerName.endsWith(".csv");
-    return extAccepted || acceptedTypes.includes(file.type);
-  };
-
-  const handleFileSelect = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file && isAcceptedFile(file)) {
-        setSelectedFile(file);
-      } else {
-        alert("Please select an Excel (.xlsx/.xls) or CSV (.csv) file");
-      }
-    },
-    []
-  );
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+    } else {
+      alert('Please select a PDF file');
+    }
+  }, []);
 
   const handleDrop = useCallback((event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     const file = event.dataTransfer.files[0];
-    if (file && isAcceptedFile(file)) {
+    if (file && file.type === 'application/pdf') {
       setSelectedFile(file);
     } else {
-      alert("Please select an Excel (.xlsx/.xls) or CSV (.csv) file");
+      alert('Please select a PDF file');
     }
   }, []);
 
-  const handleDragOver = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault();
-    },
-    []
-  );
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+  }, []);
 
-  // File Processing
-  const processFile = async () => {
+  // PDF Processing
+  const processPDF = async () => {
     if (!selectedFile) return;
 
     setIsProcessing(true);
     const formData = new FormData();
-    formData.append("excelFile", selectedFile);
-    formData.append("supplierName", supplierInfo.name);
-    formData.append("supplierContact", supplierInfo.contact);
-    formData.append("supplierEmail", supplierInfo.email);
-    formData.append("supplierAddress", supplierInfo.address);
-    formData.append("defaultCategory", importOptions.defaultCategory);
-    formData.append("priceType", importOptions.priceType);
+    formData.append('pdfFile', selectedFile);
+    formData.append('supplierName', supplierInfo.name);
+    formData.append('supplierContact', supplierInfo.contact);
+    formData.append('supplierEmail', supplierInfo.email);
+    formData.append('supplierAddress', supplierInfo.address);
+    formData.append('defaultCategory', importOptions.defaultCategory);
+    formData.append('priceType', importOptions.priceType);
 
     try {
-      const response = await fetch("/api/products/excel-import/process", {
-        method: "POST",
+      const response = await fetch('/api/products/pdf-import/process', {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: formData,
+        body: formData
       });
 
       const result: PDFImportResponse = await response.json();
@@ -165,57 +131,47 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
       if (result.success) {
         setExtractionResults(result.data);
         setEditedProducts(result.data.products);
-        setCurrentStep("preview");
+        setCurrentStep('preview');
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
-      console.error("File processing error:", error);
-      alert(
-        "Error processing file: " +
-          (error instanceof Error ? error.message : "Unknown error")
-      );
+      console.error('PDF processing error:', error);
+      alert('Error processing PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // Preview file without processing
-  const previewFile = async () => {
+  // Preview PDF without processing
+  const previewPDF = async () => {
     if (!selectedFile) return;
 
     setIsProcessing(true);
     const formData = new FormData();
-    formData.append("excelFile", selectedFile);
+    formData.append('pdfFile', selectedFile);
 
     try {
-      const response = await fetch("/api/products/excel-import/preview", {
-        method: "POST",
+      const response = await fetch('/api/products/pdf-import/preview', {
+        method: 'POST',
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
-        body: formData,
+        body: formData
       });
 
       const result = await response.json();
 
       if (result.success) {
         // Show preview modal or update UI with preview data
-        console.log("Preview data:", result.data);
-        alert(
-          `Preview: Found ${result.data.sampleProducts.length} products with ${
-            result.data.recommendations.confidence * 100
-          }% confidence`
-        );
+        console.log('Preview data:', result.data);
+        alert(`Preview: Found ${result.data.sampleProducts.length} products with ${result.data.recommendations.confidence * 100}% confidence`);
       } else {
         throw new Error(result.message);
       }
     } catch (error) {
-      console.error("File preview error:", error);
-      alert(
-        "Error previewing file: " +
-          (error instanceof Error ? error.message : "Unknown error")
-      );
+      console.error('PDF preview error:', error);
+      alert('Error previewing PDF: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsProcessing(false);
     }
@@ -226,27 +182,27 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
     if (!editedProducts.length) return;
 
     setIsProcessing(true);
-
+    
     try {
-      const response = await fetch("/api/products/excel-import/confirm", {
-        method: "POST",
+      const response = await fetch('/api/products/pdf-import/confirm', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         },
         body: JSON.stringify({
           products: editedProducts,
           supplierInfo,
-          importOptions,
-        }),
+          importOptions
+        })
       });
 
       const result = await response.json();
 
       if (result.success) {
         setImportStats(result.data);
-        setCurrentStep("success");
-
+        setCurrentStep('success');
+        
         // Call onSuccess callback if provided
         if (onSuccess) {
           setTimeout(() => {
@@ -257,11 +213,8 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
         throw new Error(result.message);
       }
     } catch (error) {
-      console.error("Import confirmation error:", error);
-      alert(
-        "Error confirming import: " +
-          (error instanceof Error ? error.message : "Unknown error")
-      );
+      console.error('Import confirmation error:', error);
+      alert('Error confirming import: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsProcessing(false);
     }
@@ -281,12 +234,12 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
 
   // Reset to start over
   const resetImport = () => {
-    setCurrentStep("upload");
+    setCurrentStep('upload');
     setSelectedFile(null);
     setExtractionResults(null);
     setEditedProducts([]);
     setImportStats(null);
-
+    
     // Call onCancel callback if provided
     if (onCancel) {
       onCancel();
@@ -297,28 +250,24 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
   const renderUploadStep = () => (
     <div className="max-w-4xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold">Excel / CSV Bulk Product Import</h2>
+        <h2 className="text-2xl font-bold">PDF Bulk Product Import</h2>
         {onCancel && (
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
         )}
       </div>
-
+      
       {/* Supplier Information */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h3 className="text-lg font-semibold mb-4">Supplier Information</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Supplier Name *
-            </label>
+            <label className="block text-sm font-medium mb-2">Supplier Name *</label>
             <input
               type="text"
               value={supplierInfo.name}
-              onChange={(e) =>
-                setSupplierInfo((prev) => ({ ...prev, name: e.target.value }))
-              }
+              onChange={(e) => setSupplierInfo(prev => ({ ...prev, name: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter supplier name"
             />
@@ -328,12 +277,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
             <input
               type="text"
               value={supplierInfo.contact}
-              onChange={(e) =>
-                setSupplierInfo((prev) => ({
-                  ...prev,
-                  contact: e.target.value,
-                }))
-              }
+              onChange={(e) => setSupplierInfo(prev => ({ ...prev, contact: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Phone/Mobile number"
             />
@@ -343,9 +287,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
             <input
               type="email"
               value={supplierInfo.email}
-              onChange={(e) =>
-                setSupplierInfo((prev) => ({ ...prev, email: e.target.value }))
-              }
+              onChange={(e) => setSupplierInfo(prev => ({ ...prev, email: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="supplier@example.com"
             />
@@ -354,12 +296,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
             <label className="block text-sm font-medium mb-2">Address</label>
             <textarea
               value={supplierInfo.address}
-              onChange={(e) =>
-                setSupplierInfo((prev) => ({
-                  ...prev,
-                  address: e.target.value,
-                }))
-              }
+              onChange={(e) => setSupplierInfo(prev => ({ ...prev, address: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Supplier address"
               rows={2}
@@ -373,18 +310,11 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
         <h3 className="text-lg font-semibold mb-4">Import Options</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-2">
-              Default Category
-            </label>
+            <label className="block text-sm font-medium mb-2">Default Category</label>
             <input
               type="text"
               value={importOptions.defaultCategory}
-              onChange={(e) =>
-                setImportOptions((prev) => ({
-                  ...prev,
-                  defaultCategory: e.target.value,
-                }))
-              }
+              onChange={(e) => setImportOptions(prev => ({ ...prev, defaultCategory: e.target.value }))}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
@@ -392,12 +322,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
             <label className="block text-sm font-medium mb-2">Price Type</label>
             <select
               value={importOptions.priceType}
-              onChange={(e) =>
-                setImportOptions((prev) => ({
-                  ...prev,
-                  priceType: e.target.value as "selling" | "cost",
-                }))
-              }
+              onChange={(e) => setImportOptions(prev => ({ ...prev, priceType: e.target.value as 'selling' | 'cost' }))}
               className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="selling">Selling Price</option>
@@ -409,12 +334,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
               <input
                 type="checkbox"
                 checked={importOptions.updateExisting}
-                onChange={(e) =>
-                  setImportOptions((prev) => ({
-                    ...prev,
-                    updateExisting: e.target.checked,
-                  }))
-                }
+                onChange={(e) => setImportOptions(prev => ({ ...prev, updateExisting: e.target.checked }))}
                 className="mr-2"
               />
               <span className="text-sm">Update existing products</span>
@@ -425,62 +345,56 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
 
       {/* File Upload */}
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h3 className="text-lg font-semibold mb-4">Upload Excel / CSV File</h3>
-
+        <h3 className="text-lg font-semibold mb-4">Upload PDF File</h3>
+        
         <div
           className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors"
           onDrop={handleDrop}
           onDragOver={handleDragOver}
         >
           <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-
+          
           {selectedFile ? (
             <div className="space-y-2">
               <p className="text-green-600 font-medium">{selectedFile.name}</p>
-              <p className="text-sm text-gray-500">
-                Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-              </p>
+              <p className="text-sm text-gray-500">Size: {(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
             </div>
           ) : (
             <div className="space-y-2">
-              <p className="text-gray-600">
-                Drop your Excel or CSV file here or click to select
-              </p>
-              <p className="text-sm text-gray-500">
-                Support for product catalogs exported as Excel or CSV
-              </p>
+              <p className="text-gray-600">Drop your PDF file here or click to select</p>
+              <p className="text-sm text-gray-500">Support for product catalogs, invoices, and price lists</p>
             </div>
           )}
-
+          
           <input
             type="file"
-            accept=".xlsx,.xls,.csv"
+            accept=".pdf"
             onChange={handleFileSelect}
             className="hidden"
-            id="excel-upload"
+            id="pdf-upload"
           />
           <label
-            htmlFor="excel-upload"
+            htmlFor="pdf-upload"
             className="mt-4 inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg cursor-pointer hover:bg-blue-600"
           >
             <Upload className="mr-2 h-4 w-4" />
-            Select Excel / CSV File
+            Select PDF File
           </label>
         </div>
 
         {selectedFile && (
           <div className="mt-6 flex space-x-4">
             <button
-              onClick={previewFile}
+              onClick={previewPDF}
               disabled={isProcessing}
               className="flex items-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50"
             >
               <Eye className="mr-2 h-4 w-4" />
               Preview Extraction
             </button>
-
+            
             <button
-              onClick={processFile}
+              onClick={processPDF}
               disabled={isProcessing || !supplierInfo.name}
               className="flex items-center px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
             >
@@ -489,7 +403,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
               ) : (
                 <Upload className="mr-2 h-4 w-4" />
               )}
-              {isProcessing ? "Processing..." : "Import File"}
+              {isProcessing ? 'Processing...' : 'Process PDF'}
             </button>
           </div>
         )}
@@ -505,7 +419,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
     return (
       <div className="max-w-6xl mx-auto p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Extraction Results</h2>
+          <h2 className="text-2xl font-bold">PDF Extraction Results</h2>
           <button
             onClick={resetImport}
             className="flex items-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
@@ -520,9 +434,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
           <h3 className="text-lg font-semibold mb-4">Extraction Summary</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {extractionSummary.totalProducts}
-              </div>
+              <div className="text-2xl font-bold text-blue-600">{extractionSummary.totalProducts}</div>
               <div className="text-sm text-gray-600">Products Found</div>
             </div>
             <div className="text-center">
@@ -532,9 +444,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
               <div className="text-sm text-gray-600">Confidence</div>
             </div>
             <div className="text-center">
-              <div className="text-sm font-medium text-gray-700">
-                {extractionSummary.method.replace("_", " ")}
-              </div>
+              <div className="text-sm font-medium text-gray-700">{extractionSummary.method.replace('_', ' ')}</div>
               <div className="text-sm text-gray-600">Method Used</div>
             </div>
             <div className="text-center">
@@ -548,34 +458,23 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
 
         {/* Field Coverage */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4">
-            Field Coverage Analysis
-          </h3>
+          <h3 className="text-lg font-semibold mb-4">Field Coverage Analysis</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(extractionSummary.fieldsFound).map(
-              ([field, data]) => (
-                <div key={field} className="text-center">
-                  <div className="text-lg font-semibold">
-                    {data.percentage}%
-                  </div>
-                  <div className="text-sm text-gray-600 capitalize">
-                    {field}
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                    <div
-                      className={`h-2 rounded-full ${
-                        data.percentage >= 80
-                          ? "bg-green-500"
-                          : data.percentage >= 50
-                          ? "bg-yellow-500"
-                          : "bg-red-500"
-                      }`}
-                      style={{ width: `${data.percentage}%` }}
-                    />
-                  </div>
+            {Object.entries(extractionSummary.fieldsFound).map(([field, data]) => (
+              <div key={field} className="text-center">
+                <div className="text-lg font-semibold">{data.percentage}%</div>
+                <div className="text-sm text-gray-600 capitalize">{field}</div>
+                <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                  <div
+                    className={`h-2 rounded-full ${
+                      data.percentage >= 80 ? 'bg-green-500' :
+                      data.percentage >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                    }`}
+                    style={{ width: `${data.percentage}%` }}
+                  />
                 </div>
-              )
-            )}
+              </div>
+            ))}
           </div>
         </div>
 
@@ -585,9 +484,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
             <div className="flex items-start">
               <AlertCircle className="h-5 w-5 text-yellow-600 mt-1 mr-3 flex-shrink-0" />
               <div>
-                <h4 className="font-semibold text-yellow-800">
-                  Recommendations
-                </h4>
+                <h4 className="font-semibold text-yellow-800">Recommendations</h4>
                 <ul className="mt-2 text-sm text-yellow-700 space-y-1">
                   {recommendations.suggestedActions.map((action, index) => (
                     <li key={index}>• {action}</li>
@@ -601,14 +498,12 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
         {/* Product Preview */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold">
-              Extracted Products Preview
-            </h3>
+            <h3 className="text-lg font-semibold">Extracted Products Preview</h3>
             <div className="text-sm text-gray-600">
               Showing first 5 of {products.length} products
             </div>
           </div>
-
+          
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto">
               <thead>
@@ -623,15 +518,11 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
               <tbody>
                 {products.slice(0, 5).map((product, index) => (
                   <tr key={index} className="border-t">
-                    <td className="px-4 py-2">{product.name || "N/A"}</td>
-                    <td className="px-4 py-2">
-                      {product.sku || "Auto-generated"}
-                    </td>
+                    <td className="px-4 py-2">{product.name || 'N/A'}</td>
+                    <td className="px-4 py-2">{product.sku || 'Auto-generated'}</td>
                     <td className="px-4 py-2">₹{product.sellingPrice || 0}</td>
                     <td className="px-4 py-2">{product.currentStock || 0}</td>
-                    <td className="px-4 py-2">
-                      {product.category || importOptions.defaultCategory}
-                    </td>
+                    <td className="px-4 py-2">{product.category || importOptions.defaultCategory}</td>
                   </tr>
                 ))}
               </tbody>
@@ -640,13 +531,13 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
 
           <div className="mt-6 flex justify-between">
             <button
-              onClick={() => setCurrentStep("edit")}
+              onClick={() => setCurrentStep('edit')}
               className="flex items-center px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600"
             >
               <Eye className="mr-2 h-4 w-4" />
               Review & Edit Products
             </button>
-
+            
             <button
               onClick={confirmImport}
               disabled={isProcessing}
@@ -657,7 +548,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
               ) : (
                 <CheckCircle className="mr-2 h-4 w-4" />
               )}
-              {isProcessing ? "Importing..." : "Import All Products"}
+              {isProcessing ? 'Importing...' : 'Import All Products'}
             </button>
           </div>
         </div>
@@ -671,7 +562,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
         <h2 className="text-2xl font-bold">Review & Edit Products</h2>
         <div className="flex space-x-2">
           <button
-            onClick={() => setCurrentStep("preview")}
+            onClick={() => setCurrentStep('preview')}
             className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
           >
             Back to Preview
@@ -681,11 +572,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
             disabled={isProcessing}
             className="flex items-center px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:opacity-50"
           >
-            {isProcessing ? (
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <CheckCircle className="mr-2 h-4 w-4" />
-            )}
+            {isProcessing ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
             Import {editedProducts.length} Products
           </button>
         </div>
@@ -712,19 +599,15 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
                     <input
                       type="text"
                       value={product.name}
-                      onChange={(e) =>
-                        updateProduct(index, "name", e.target.value)
-                      }
+                      onChange={(e) => updateProduct(index, 'name', e.target.value)}
                       className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-4 py-2">
                     <input
                       type="text"
-                      value={product.sku || ""}
-                      onChange={(e) =>
-                        updateProduct(index, "sku", e.target.value)
-                      }
+                      value={product.sku || ''}
+                      onChange={(e) => updateProduct(index, 'sku', e.target.value)}
                       className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       placeholder="Auto-generated"
                     />
@@ -733,13 +616,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
                     <input
                       type="number"
                       value={product.sellingPrice}
-                      onChange={(e) =>
-                        updateProduct(
-                          index,
-                          "sellingPrice",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
+                      onChange={(e) => updateProduct(index, 'sellingPrice', parseFloat(e.target.value) || 0)}
                       className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       step="0.01"
                     />
@@ -748,13 +625,7 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
                     <input
                       type="number"
                       value={product.costPrice || 0}
-                      onChange={(e) =>
-                        updateProduct(
-                          index,
-                          "costPrice",
-                          parseFloat(e.target.value) || 0
-                        )
-                      }
+                      onChange={(e) => updateProduct(index, 'costPrice', parseFloat(e.target.value) || 0)}
                       className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       step="0.01"
                     />
@@ -763,23 +634,15 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
                     <input
                       type="number"
                       value={product.currentStock || 0}
-                      onChange={(e) =>
-                        updateProduct(
-                          index,
-                          "currentStock",
-                          parseInt(e.target.value) || 0
-                        )
-                      }
+                      onChange={(e) => updateProduct(index, 'currentStock', parseInt(e.target.value) || 0)}
                       className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </td>
                   <td className="px-4 py-2">
                     <input
                       type="text"
-                      value={product.category || ""}
-                      onChange={(e) =>
-                        updateProduct(index, "category", e.target.value)
-                      }
+                      value={product.category || ''}
+                      onChange={(e) => updateProduct(index, 'category', e.target.value)}
                       className="w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                     />
                   </td>
@@ -804,12 +667,8 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
     <div className="max-w-4xl mx-auto p-6 text-center">
       <div className="bg-green-50 rounded-lg p-8 mb-6">
         <CheckCircle className="mx-auto h-16 w-16 text-green-500 mb-4" />
-        <h2 className="text-2xl font-bold text-green-800 mb-2">
-          Import Successful!
-        </h2>
-        <p className="text-green-700">
-          Your products have been successfully imported from the file.
-        </p>
+        <h2 className="text-2xl font-bold text-green-800 mb-2">Import Successful!</h2>
+        <p className="text-green-700">Your products have been successfully imported from the PDF.</p>
       </div>
 
       {importStats && (
@@ -817,27 +676,19 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
           <h3 className="text-lg font-semibold mb-4">Import Summary</h3>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                {importStats.summary.successful}
-              </div>
+              <div className="text-2xl font-bold text-green-600">{importStats.summary.successful}</div>
               <div className="text-sm text-gray-600">Successful</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-red-600">
-                {importStats.summary.failed}
-              </div>
+              <div className="text-2xl font-bold text-red-600">{importStats.summary.failed}</div>
               <div className="text-sm text-gray-600">Failed</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-yellow-600">
-                {importStats.summary.duplicates}
-              </div>
+              <div className="text-2xl font-bold text-yellow-600">{importStats.summary.duplicates}</div>
               <div className="text-sm text-gray-600">Duplicates</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {importStats.summary.updated}
-              </div>
+              <div className="text-2xl font-bold text-blue-600">{importStats.summary.updated}</div>
               <div className="text-sm text-gray-600">Updated</div>
             </div>
           </div>
@@ -850,11 +701,11 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
           className="flex items-center px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
         >
           <Upload className="mr-2 h-4 w-4" />
-          Import Another File
+          Import Another PDF
         </button>
-
+        
         <button
-          onClick={() => (window.location.href = "/inventory")}
+          onClick={() => window.location.href = '/inventory'}
           className="flex items-center px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
         >
           <Eye className="mr-2 h-4 w-4" />
@@ -872,31 +723,22 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center space-x-8">
             {[
-              { step: "upload", label: "Upload File", icon: Upload },
-              { step: "preview", label: "Preview", icon: Eye },
-              { step: "edit", label: "Edit Products", icon: FileText },
-              { step: "success", label: "Complete", icon: CheckCircle },
+              { step: 'upload', label: 'Upload PDF', icon: Upload },
+              { step: 'preview', label: 'Preview', icon: Eye },
+              { step: 'edit', label: 'Edit Products', icon: FileText },
+              { step: 'success', label: 'Complete', icon: CheckCircle }
             ].map(({ step, label, icon: Icon }) => (
               <div key={step} className="flex items-center">
-                <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                    currentStep === step
-                      ? "bg-blue-500 text-white"
-                      : ["preview", "edit", "success"].indexOf(currentStep) >
-                        ["upload", "preview", "edit", "success"].indexOf(step)
-                      ? "bg-green-500 text-white"
-                      : "bg-gray-200 text-gray-500"
-                  }`}
-                >
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  currentStep === step ? 'bg-blue-500 text-white' :
+                  ['preview', 'edit', 'success'].indexOf(currentStep) > ['upload', 'preview', 'edit', 'success'].indexOf(step) 
+                    ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
+                }`}>
                   <Icon className="h-4 w-4" />
                 </div>
-                <span
-                  className={`ml-2 text-sm ${
-                    currentStep === step
-                      ? "text-blue-600 font-medium"
-                      : "text-gray-600"
-                  }`}
-                >
+                <span className={`ml-2 text-sm ${
+                  currentStep === step ? 'text-blue-600 font-medium' : 'text-gray-600'
+                }`}>
                   {label}
                 </span>
               </div>
@@ -906,10 +748,10 @@ const PDFBulkImport: React.FC<PDFBulkImportProps> = ({
       </div>
 
       {/* Step Content */}
-      {currentStep === "upload" && renderUploadStep()}
-      {currentStep === "preview" && renderPreviewStep()}
-      {currentStep === "edit" && renderEditStep()}
-      {currentStep === "success" && renderSuccessStep()}
+      {currentStep === 'upload' && renderUploadStep()}
+      {currentStep === 'preview' && renderPreviewStep()}
+      {currentStep === 'edit' && renderEditStep()}
+      {currentStep === 'success' && renderSuccessStep()}
     </div>
   );
 };

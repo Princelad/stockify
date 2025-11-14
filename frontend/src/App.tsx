@@ -20,6 +20,7 @@ import Suppliers from "@/pages/Suppliers";
 import Reports from "@/pages/Reports";
 import SalesReport from "@/pages/reports/SalesReport";
 import InventoryReport from "@/pages/reports/InventoryReport";
+import TaxReport from "@/pages/reports/TaxReport";
 import LabelsAndBarcodes from "@/pages/LabelsAndBarcodes";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
@@ -93,7 +94,6 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-
               <Route
                 path="/reports"
                 element={
@@ -118,7 +118,14 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-
+              <Route
+                path="/reports/tax"
+                element={
+                  <ProtectedRoute>
+                    <TaxReport />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/labels-barcodes"
                 element={
