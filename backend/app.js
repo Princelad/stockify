@@ -26,6 +26,12 @@ mongoose.connect(process.env.MONGODB_URI, {
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/labels', require('./routes/labels'));
+app.use('/api/categories', require('./routes/categoryRoutes'));
+app.use('/api/suppliers', require('./routes/suppliers'));
+app.use('/api/customers', require('./routes/customers'));
+app.use('/api/sales', require('./routes/sales'));
+app.use('/api/reports', require('./routes/reports'));
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));

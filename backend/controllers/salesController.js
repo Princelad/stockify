@@ -18,7 +18,9 @@ const getSales = async (req, res) => {
       endDate,
     } = req.query;
 
-    const filters = {};
+    const filters = {
+      createdBy: req.user._id, // Add user scoping
+    };
 
     if (customer) filters.customer = customer;
     if (paymentMethod) filters.paymentMethod = paymentMethod;
@@ -66,14 +68,17 @@ const getSales = async (req, res) => {
  */
 const getSale = async (req, res) => {
   try {
-    const sale = await Sale.findById(req.params.id)
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id
+    })
       .populate("customer")
       .populate("items.product");
 
     if (!sale) {
       return res.status(404).json({
         success: false,
-        message: "Sale not found",
+        message: "Sale not found or access denied",
       });
     }
 
@@ -118,12 +123,29 @@ const createSale = async (req, res) => {
     // Validate customer if provided
     let customer = null;
     if (customerId) {
-      customer = await Customer.findById(customerId).session(session);
+      // First try to find customer with user scoping
+      customer = await Customer.findOne({
+        _id: customerId,
+        createdBy: req.user._id
+      }).session(session);
+      
+      // If not found with user scoping, try without (for backward compatibility)
       if (!customer) {
-        return res.status(404).json({
-          success: false,
-          message: "Customer not found",
-        });
+        customer = await Customer.findById(customerId).session(session);
+        
+        // If customer exists but doesn't belong to user, we'll still allow the sale
+        // but won't link the customer (treat as walk-in customer)
+        if (customer && customer.createdBy && customer.createdBy.toString() !== req.user._id.toString()) {
+          console.log(`Customer ${customerId} belongs to different user, treating as walk-in customer`);
+          customer = null;
+          customerId = null; // Don't link this customer to the sale
+        }
+      }
+      
+      // If customer still not found, log warning but continue (walk-in customer)
+      if (!customer && customerId) {
+        console.log(`Customer ${customerId} not found, treating as walk-in customer`);
+        customerId = null; // Don't link non-existent customer
       }
     }
 
@@ -132,12 +154,16 @@ const createSale = async (req, res) => {
     const stockUpdates = [];
 
     for (const item of items) {
-      const product = await Product.findById(item.productId).session(session);
+      const product = await Product.findOne({
+        _id: item.productId,
+        createdBy: req.user._id,
+        isActive: true
+      }).session(session);
       if (!product) {
         await session.abortTransaction();
         return res.status(404).json({
           success: false,
-          message: `Product with ID ${item.productId} not found`,
+          message: `Product with ID ${item.productId} not found or access denied`,
         });
       }
 
@@ -186,10 +212,11 @@ const createSale = async (req, res) => {
       discountPercentage,
       paymentMethod,
       paymentStatus,
+      createdBy: req.user._id, // Add the required createdBy field
     };
 
-    // Only add customer if customerId is provided
-    if (customerId) {
+    // Only add customer if valid customerId exists after validation
+    if (customerId && customer) {
       saleData.customer = customerId;
     }
 
@@ -251,12 +278,15 @@ const updateSalePayment = async (req, res) => {
 
   try {
     const { paymentStatus } = req.body;
-    const sale = await Sale.findById(req.params.id).session(session);
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id
+    }).session(session);
 
     if (!sale) {
       return res.status(404).json({
         success: false,
-        message: "Sale not found",
+        message: "Sale not found or access denied",
       });
     }
 
@@ -315,12 +345,15 @@ const deleteSale = async (req, res) => {
   session.startTransaction();
 
   try {
-    const sale = await Sale.findById(req.params.id).session(session);
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      createdBy: req.user._id
+    }).session(session);
 
     if (!sale) {
       return res.status(404).json({
         success: false,
-        message: "Sale not found",
+        message: "Sale not found or access denied",
       });
     }
 
@@ -394,13 +427,23 @@ const getSalesStats = async (req, res) => {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - parseInt(period));
 
+    const baseFilter = { 
+      createdBy: req.user._id,
+      createdAt: { $gte: startDate } 
+    };
+
     const [totalSales, totalRevenue, recentSales] = await Promise.all([
-      Sale.countDocuments({ createdAt: { $gte: startDate } }),
+      Sale.countDocuments(baseFilter),
       Sale.aggregate([
-        { $match: { createdAt: { $gte: startDate }, paymentStatus: "paid" } },
+        { 
+          $match: { 
+            ...baseFilter,
+            paymentStatus: "paid" 
+          } 
+        },
         { $group: { _id: null, total: { $sum: "$totalAmount" } } },
       ]),
-      Sale.find({ createdAt: { $gte: startDate } })
+      Sale.find(baseFilter)
         .populate("customer", "name")
         .sort({ createdAt: -1 })
         .limit(5),

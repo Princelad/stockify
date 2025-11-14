@@ -7,7 +7,10 @@ const getCustomers = async (req, res) => {
   try {
     const { page = 1, limit = 10, search = "" } = req.query;
 
-    const filters = {};
+    const filters = {
+      createdBy: req.user._id, // Add user scoping
+    };
+    
     if (search) {
       filters.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -90,9 +93,12 @@ const createCustomer = async (req, res) => {
       });
     }
 
-    // Check if customer with same phone already exists
+    // Check if customer with same phone already exists for this user
     if (phone) {
-      const existingCustomer = await Customer.findOne({ phone });
+      const existingCustomer = await Customer.findOne({ 
+        phone,
+        createdBy: req.user._id 
+      });
       if (existingCustomer) {
         return res.status(409).json({
           success: false,
@@ -107,6 +113,7 @@ const createCustomer = async (req, res) => {
       phone,
       address,
       isDealer,
+      createdBy: req.user._id,
     });
 
     await customer.save();
@@ -246,6 +253,7 @@ const searchCustomers = async (req, res) => {
     }
 
     const customers = await Customer.find({
+      createdBy: req.user._id, // Add user scoping
       $or: [
         { name: { $regex: q, $options: "i" } },
         { phone: { $regex: q, $options: "i" } },

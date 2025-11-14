@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { InventoryLayout } from '@/layouts';
-import { FileText, Plus, Search, ShoppingCart, Trash2, Calculator, User, CreditCard, Printer, AlertCircle } from 'lucide-react';
+import { FileText, Plus, Search, ShoppingCart, Trash2, Calculator, User, CreditCard, Printer, AlertCircle, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -48,20 +48,29 @@ export default function Billing() {
     loadCustomers();
   }, []);
 
-  // Search products when search term changes
+  // Search products when search term changes with debouncing
   useEffect(() => {
-    if (searchProduct.trim()) {
-      searchProducts(searchProduct);
-    } else {
-      setSearchResults([]);
-    }
+    const timeoutId = setTimeout(() => {
+      if (searchProduct.trim().length >= 2) {
+        searchProducts(searchProduct);
+      } else {
+        setSearchResults([]);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(timeoutId);
   }, [searchProduct]);
 
   const loadCustomers = async () => {
     try {
+      console.log('Loading customers...'); // Debug log
       const response = await apiService.getCustomers({ limit: 100 });
+      console.log('Customer API response:', response); // Debug log
       if (response.success && response.data) {
+        console.log('Customers loaded:', response.data.customers); // Debug log
         setCustomers(response.data.customers);
+      } else {
+        console.warn('Failed to load customers:', response.message); // Debug log
       }
     } catch (error) {
       console.error('Error loading customers:', error);
@@ -69,15 +78,93 @@ export default function Billing() {
     }
   };
 
-  const searchProducts = async (query: string) => {
+  // Test connection to products API
+  const testProductsConnection = async () => {
     try {
-      const response = await apiService.searchProductsForBilling(query);
-      if (response.success && response.data) {
-        setSearchResults(response.data.products || []);
+      console.log('Testing products API connection...');
+      const response = await apiService.getProducts({ limit: 1 });
+      if (response.success) {
+        toast({ 
+          title: 'Connection Test', 
+          description: 'Products API is working correctly', 
+          type: 'success' 
+        });
+        console.log('Products API test successful');
+      } else {
+        toast({ 
+          title: 'Connection Test', 
+          description: 'Products API returned an error', 
+          type: 'error' 
+        });
+      }
+    } catch (error) {
+      console.error('Products API test failed:', error);
+      toast({ 
+        title: 'Connection Test', 
+        description: 'Cannot connect to products API', 
+        type: 'error' 
+      });
+    }
+  };
+
+  const searchProducts = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      console.log('Searching products for:', query); // Debug log
+      
+      // Try the billing-specific search first
+      let response = await apiService.searchProductsForBilling(query);
+      console.log('Billing search response:', response); // Debug log
+      
+      // If billing search fails, try the general products search as fallback
+      if (!response.success || !response.data?.products) {
+        console.log('Billing search failed, trying general search...');
+        const generalResponse = await apiService.getProducts({
+          search: query,
+          limit: 20,
+          page: 1
+        });
+        
+        if (generalResponse.success && generalResponse.data?.products) {
+          // Filter to only show products with stock
+          const productsWithStock = generalResponse.data.products.filter(
+            (product: Product) => product.currentStock && product.currentStock > 0
+          );
+          
+          setSearchResults(productsWithStock);
+          console.log('General search successful, found products with stock:', productsWithStock.length);
+          return; // Exit early since we found results
+        }
+      }
+      if (response.success && response.data?.products) {
+        setSearchResults(response.data.products);
+        console.log('Primary search results:', response.data.products.length); // Debug log
+      } else {
+        console.warn('All search methods failed:', response.message);
+        setSearchResults([]);
+        if (response.message && response.message !== 'No products found') {
+          toast({ 
+            title: 'Search Error', 
+            description: response.message, 
+            type: 'error' 
+          });
+        }
       }
     } catch (error) {
       console.error('Error searching products:', error);
       setSearchResults([]);
+      toast({ 
+        title: 'Search Error', 
+        description: 'Failed to search products. Please check your connection and try again.', 
+        type: 'error' 
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -258,6 +345,24 @@ export default function Billing() {
                 <p className="text-gray-600 mt-1">Create bills and process sales transactions</p>
               </div>
               <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={testProductsConnection}
+                  className="text-xs"
+                >
+                  <Search className="h-3 w-3 mr-1" />
+                  Test Search
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={loadCustomers}
+                  className="text-xs"
+                >
+                  <User className="h-3 w-3 mr-1" />
+                  Test Customers
+                </Button>
                 <Button variant="outline">
                   <Printer className="h-4 w-4 mr-2" />
                   Print Last Bill
@@ -274,12 +379,18 @@ export default function Billing() {
                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                   <User className="h-5 w-5" />
                   Customer Information
+                  {/* Debug info */}
+                  <span className="text-xs text-gray-500 ml-2">
+                    ({customers.length} customers loaded)
+                  </span>
                 </h3>
                 <div className="flex gap-2">
                   <Select
                     value={selectedCustomer?._id || ""}
                     onValueChange={(value) => {
+                      console.log('Customer selected:', value); // Debug log
                       const customer = customers.find(c => c._id === value);
+                      console.log('Found customer:', customer); // Debug log
                       setSelectedCustomer(customer || null);
                     }}
                   >
@@ -287,11 +398,17 @@ export default function Billing() {
                       <SelectValue placeholder="Select customer (optional)" />
                     </SelectTrigger>
                     <SelectContent>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer._id} value={customer._id}>
-                          {customer.name} - {customer.phone}
+                      {customers.length === 0 ? (
+                        <SelectItem value="_no_customers" disabled>
+                          No customers found
                         </SelectItem>
-                      ))}
+                      ) : (
+                        customers.map((customer) => (
+                          <SelectItem key={customer._id} value={customer._id}>
+                            {customer.name} - {customer.phone}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <Dialog open={isCustomerDialogOpen} onOpenChange={setIsCustomerDialogOpen}>
@@ -362,42 +479,120 @@ export default function Billing() {
                 <div className="relative mb-4">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
-                    placeholder="Search products to add..."
+                    placeholder="Search products by name, SKU, or barcode..."
                     value={searchProduct}
                     onChange={(e) => setSearchProduct(e.target.value)}
                     className="pl-10"
                   />
+                  {loading && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    </div>
+                  )}
                 </div>
                 
-                {searchProduct && (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {searchResults.map((product) => (
-                      <div
-                        key={product._id}
-                        onClick={() => addItem(product)}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors"
-                      >
-                        <div>
-                          <p className="font-medium">{product.name}</p>
-                          <p className="text-sm text-gray-600">Stock: {product.currentStock}</p>
+                {/* Search Results */}
+                {searchProduct.trim() && (
+                  <div className="border border-gray-200 rounded-lg max-h-80 overflow-y-auto">
+                    {searchResults.length > 0 ? (
+                      <>
+                        <div className="p-2 bg-gray-50 border-b border-gray-200 text-xs text-gray-600 font-medium">
+                          Found {searchResults.length} product{searchResults.length !== 1 ? 's' : ''}
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold">
-                            ₹{(selectedCustomer?.isDealer && product.wholesalePrice 
-                              ? product.wholesalePrice 
-                              : product.sellingPrice
-                            ).toLocaleString()}
-                          </p>
-                          <Button size="sm" className="mt-1">
-                            <Plus className="h-3 w-3" />
-                          </Button>
+                        <div className="space-y-1">
+                          {searchResults.map((product) => (
+                            <div
+                              key={product._id}
+                              onClick={() => addItem(product)}
+                              className="flex items-center justify-between p-3 hover:bg-blue-50 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 truncate">{product.name}</p>
+                                <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                                  <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-mono">
+                                    {product.sku}
+                                  </span>
+                                  {product.category && (
+                                    <span className="text-gray-500">• {product.category}</span>
+                                  )}
+                                  {product.brand && (
+                                    <span className="text-gray-500">• {product.brand}</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    product.currentStock > 10 
+                                      ? 'bg-green-100 text-green-700' 
+                                      : product.currentStock > 0 
+                                      ? 'bg-yellow-100 text-yellow-700' 
+                                      : 'bg-red-100 text-red-700'
+                                  }`}>
+                                    Stock: {product.currentStock}
+                                  </span>
+                                  {product.currentStock <= 5 && product.currentStock > 0 && (
+                                    <span className="text-xs text-orange-600 font-medium">Low Stock</span>
+                                  )}
+                                  {product.currentStock === 0 && (
+                                    <span className="text-xs text-red-600 font-medium">Out of Stock</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="text-right ml-4">
+                                <p className="font-bold text-gray-900">
+                                  ₹{(selectedCustomer?.isDealer && product.wholesalePrice 
+                                    ? product.wholesalePrice 
+                                    : product.sellingPrice
+                                  ).toLocaleString()}
+                                </p>
+                                {selectedCustomer?.isDealer && product.wholesalePrice && (
+                                  <p className="text-xs text-gray-500 line-through">
+                                    ₹{product.sellingPrice.toLocaleString()}
+                                  </p>
+                                )}
+                                <Button 
+                                  size="sm" 
+                                  className="mt-1 h-6 text-xs"
+                                  disabled={product.currentStock === 0}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
                         </div>
+                      </>
+                    ) : (
+                      <div className="p-8 text-center text-gray-500">
+                        {loading ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                            <span>Searching...</span>
+                          </div>
+                        ) : searchProduct.trim().length < 2 ? (
+                          <div>
+                            <p className="text-sm">Type at least 2 characters to search</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <p className="font-medium">No products found</p>
+                            <p className="text-sm mt-1">Try searching by product name, SKU, or barcode</p>
+                          </div>
+                        )}
                       </div>
-                    ))}
-                    
-                    {searchResults.length === 0 && (
-                      <p className="text-gray-500 text-center py-4">No products found</p>
                     )}
+                  </div>
+                )}
+                
+                {/* Quick Actions */}
+                {!searchProduct.trim() && (
+                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600 mb-2">Quick tips:</p>
+                    <ul className="text-xs text-gray-500 space-y-1">
+                      <li>• Search by product name, SKU, or barcode</li>
+                      <li>• Only products with stock will appear</li>
+                      <li>• Prices shown are based on customer type</li>
+                    </ul>
                   </div>
                 )}
               </div>

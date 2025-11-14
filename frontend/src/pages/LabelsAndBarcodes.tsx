@@ -398,7 +398,7 @@ export default function LabelsAndBarcodes() {
       setBackendConnected(connectionTest.connected);
 
       if (!connectionTest.connected) {
-        throw new Error("Backend server is not running");
+        throw new Error("Backend server is not running on port 5000");
       }
 
       if (!connectionTest.authenticated) {
@@ -407,6 +407,29 @@ export default function LabelsAndBarcodes() {
       }
 
       setAuthenticationStatus("authenticated");
+
+      // Test the labels endpoint specifically
+      try {
+        const labelTestResponse = await fetch("http://localhost:5000/api/labels/test/routes", {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+        });
+        
+        if (!labelTestResponse.ok) {
+          console.warn("Labels endpoint test failed:", labelTestResponse.status);
+          if (labelTestResponse.status === 404) {
+            throw new Error("Labels service is not available. The /api/labels endpoint was not found.");
+          }
+        } else {
+          console.log("Labels endpoint is working correctly");
+        }
+      } catch (labelError) {
+        console.warn("Labels endpoint test error:", labelError);
+        // Don't throw here, just log the warning
+      }
 
       // Load products and templates in parallel
       const [productsData, templatesResponse] = await Promise.all([
@@ -452,6 +475,18 @@ export default function LabelsAndBarcodes() {
           "error",
           "Authentication Required",
           "Please log in to access your products"
+        );
+      } else if (errorMessage.includes("Backend server")) {
+        showNotification(
+          "error",
+          "Backend Offline",
+          "The backend server is not running. Please start it first."
+        );
+      } else if (errorMessage.includes("Labels service")) {
+        showNotification(
+          "error",
+          "Labels Service Issue",
+          "The labels endpoint is not working. Check backend setup."
         );
       } else {
         showNotification(
@@ -694,6 +729,33 @@ export default function LabelsAndBarcodes() {
     setSelectedLabelProducts((prev) => prev.filter((p) => p._id !== productId));
   };
 
+  // Debug function to test label endpoint
+  const testLabelEndpoint = async () => {
+    try {
+      console.log("Testing label endpoint connection...");
+      const response = await fetch("http://localhost:5000/api/labels/test/routes", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Label endpoint test successful:", data);
+        showNotification("success", "Connection Test", "Label service is available");
+      } else {
+        console.error("Label endpoint test failed:", response.status);
+        showNotification("error", "Connection Test", `Label service returned status: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Label endpoint test error:", error);
+      showNotification("error", "Connection Test", "Cannot connect to label service");
+    }
+  };
+
+  // Enhanced handlePrintLabels with better debugging
   const handlePrintLabels = async () => {
     if (previewMode === "product" && selectedLabelProducts.length === 0) {
       showNotification(
@@ -703,7 +765,7 @@ export default function LabelsAndBarcodes() {
       );
       return;
     }
-    if (previewMode === "custom" && !customText) {
+    if (previewMode === "custom" && !customText.trim()) {
       showNotification(
         "error",
         "No Text",
@@ -715,7 +777,8 @@ export default function LabelsAndBarcodes() {
     try {
       setIsGenerating(true);
 
-      const pdfBlob = await apiService.generateLabelPDF({
+      // Log the request data for debugging
+      const requestData = {
         templateId: selectedTemplate,
         products:
           previewMode === "product"
@@ -723,43 +786,93 @@ export default function LabelsAndBarcodes() {
             : undefined,
         customText: previewMode === "custom" ? customText : undefined,
         quantity: labelQuantity,
-      });
+      };
+
+      console.log("Generating labels with data:", requestData);
+
+      const pdfBlob = await apiService.generateLabelPDF(requestData);
+
+      if (!pdfBlob || pdfBlob.size === 0) {
+        throw new Error("Generated PDF is empty");
+      }
+
+      console.log("PDF generated successfully, size:", pdfBlob.size);
 
       const url = URL.createObjectURL(pdfBlob);
+      
+      // Try to open in new window for printing
       const printWindow = window.open("", "_blank");
 
       if (printWindow) {
         printWindow.document.write(`
           <html>
-            <head><title>Print Labels</title></head>
-            <body style="margin:0">
+            <head>
+              <title>Print Labels - ${selectedTemplate}</title>
+              <style>
+                body { margin: 0; padding: 0; }
+                embed { width: 100%; height: 100vh; }
+              </style>
+            </head>
+            <body>
               <embed src="${url}" width="100%" height="100%" type="application/pdf">
             </body>
           </html>
         `);
         printWindow.document.close();
+        
+        // Add print button to the window
+        setTimeout(() => {
+          if (printWindow && !printWindow.closed) {
+            printWindow.focus();
+            printWindow.print();
+          }
+        }, 1000);
       } else {
         // Fallback: download the PDF
         const a = document.createElement("a");
         a.href = url;
-        a.download = `labels-${Date.now()}.pdf`;
+        a.download = `labels-${selectedTemplate}-${Date.now()}.pdf`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        
+        showNotification(
+          "info",
+          "Download Started",
+          "PDF downloaded. Please check your downloads folder."
+        );
       }
 
-      URL.revokeObjectURL(url);
+      // Clean up the URL after a delay
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 10000);
+
       showNotification(
         "success",
-        "Labels Ready",
-        "Labels generated and ready to print"
+        "Labels Generated",
+        `Successfully generated ${previewMode === "product" ? selectedLabelProducts.length * labelQuantity : labelQuantity} labels`
       );
     } catch (error) {
       console.error("Error generating labels:", error);
+      
+      let errorMessage = "Failed to generate labels";
+      if (error instanceof Error) {
+        if (error.message.includes("404")) {
+          errorMessage = "Label service not available. Please check if the backend is running.";
+        } else if (error.message.includes("401")) {
+          errorMessage = "Authentication required. Please log in again.";
+        } else if (error.message.includes("403")) {
+          errorMessage = "Access denied. Please check your permissions.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       showNotification(
         "error",
         "Print Failed",
-        error instanceof Error ? error.message : "Failed to generate labels"
+        errorMessage
       );
     } finally {
       setIsGenerating(false);
@@ -835,7 +948,25 @@ export default function LabelsAndBarcodes() {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Connection Issue</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>
+              {error}
+              {error.includes("AUTHENTICATION_REQUIRED") && (
+                <div className="mt-2">
+                  <p className="text-sm">Please log in to access your products.</p>
+                </div>
+              )}
+              {(error.includes("Backend server") || !backendConnected) && (
+                <div className="mt-2">
+                  <p className="text-sm font-medium">To fix this issue:</p>
+                  <ol className="text-sm mt-1 list-decimal list-inside space-y-1">
+                    <li>Make sure the backend server is running on port 5000</li>
+                    <li>Run: <code className="bg-gray-100 px-1 rounded">cd backend && npm start</code></li>
+                    <li>Check that <code className="bg-gray-100 px-1 rounded">http://localhost:5000/api/labels</code> is accessible</li>
+                    <li>Refresh this page after the backend is running</li>
+                  </ol>
+                </div>
+              )}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -1211,23 +1342,35 @@ export default function LabelsAndBarcodes() {
                     />
                   </div>
 
-                  <Button
-                    onClick={handlePrintLabels}
-                    disabled={
-                      isGenerating ||
-                      (previewMode === "product" &&
-                        selectedLabelProducts.length === 0) ||
-                      (previewMode === "custom" && !customText.trim())
-                    }
-                    className="w-full"
-                  >
-                    {isGenerating ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <Printer className="h-4 w-4 mr-2" />
-                    )}
-                    Print Labels
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      onClick={testLabelEndpoint}
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                    >
+                      <Settings className="h-4 w-4 mr-2" />
+                      Test Connection
+                    </Button>
+                    
+                    <Button
+                      onClick={handlePrintLabels}
+                      disabled={
+                        isGenerating ||
+                        (previewMode === "product" &&
+                          selectedLabelProducts.length === 0) ||
+                        (previewMode === "custom" && !customText.trim())
+                      }
+                      className="w-full"
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <Printer className="h-4 w-4 mr-2" />
+                      )}
+                      Print Labels
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
