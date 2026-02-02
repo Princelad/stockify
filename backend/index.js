@@ -10,8 +10,13 @@ const fs = require("fs");
 // Load environment variables first
 dotenv.config();
 
-// Ensure upload directories exist
+// Ensure upload directories exist (skip in serverless environment)
 const createUploadDirs = () => {
+  if (process.env.VERCEL) {
+    console.log("⚡ Running in Vercel serverless environment - skipping local upload dirs");
+    return;
+  }
+  
   const uploadDirs = [
     "uploads",
     "uploads/avatars",
@@ -154,6 +159,12 @@ const startServer = async () => {
     // Connect to database
     await ConnectDb();
 
+    // Don't start server in Vercel (serverless)
+    if (process.env.VERCEL) {
+      console.log("⚡ Running in Vercel serverless mode");
+      return;
+    }
+
     const port = process.env.PORT || 5000;
     app.listen(port, () => {
       console.log(`🚀 Server running on http://localhost:${port}`);
@@ -175,6 +186,9 @@ const startServer = async () => {
 
 // Start the server
 startServer();
+
+// Export for Vercel serverless
+module.exports = app;
 
 // Error handling middleware
 app.use((err, req, res, next) => {

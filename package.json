@@ -41,7 +41,9 @@
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run build:frontend",
     "clean": "rm -rf node_modules backend/node_modules frontend/node_modules",
-    "reset": "npm run clean && npm run install:all"
+    "reset": "npm run clean && npm run install:all",
+    "vercel-build": "cd frontend && npm install && npm run build",
+    "postinstall": "npm install --prefix backend && npm install --prefix frontend"
   },
   "type": "commonjs",
   "devDependencies": {

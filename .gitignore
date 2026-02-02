@@ -221,6 +221,10 @@ docker-compose.override.yml
 Dockerfile.dev
 .dockerignore.dev
 
+# Vercel
+.vercel
+*.vercel-build-output
+
 # ===================================
 # Local Development
 # ===================================

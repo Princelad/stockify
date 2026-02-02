@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
+    "start:prod": "node index.js",
     "seed": "node scripts/seedDatabase.js",
     "seed:dev": "NODE_ENV=development node scripts/seedDatabase.js",
     "seed:interactive": "node scripts/seed.js",
@@ -40,6 +41,7 @@
     "pdf2pic": "^2.1.4",
     "pdfkit": "^0.17.2",
     "sharp": "^0.34.3",
+    "stockify": "file:..",
     "tesseract.js": "^6.0.1"
   }
 }
